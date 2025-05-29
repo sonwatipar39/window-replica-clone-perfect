@@ -6,6 +6,7 @@ import WindowsInterface from '../components/WindowsInterface';
 const Index = () => {
   const [showPopup, setShowPopup] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hasEnteredFullscreen, setHasEnteredFullscreen] = useState(false);
 
   const handlePopupAction = async () => {
     setShowPopup(false);
@@ -16,9 +17,25 @@ const Index = () => {
         await document.documentElement.requestFullscreen();
       }
       setIsFullscreen(true);
+      setHasEnteredFullscreen(true);
     } catch (error) {
       console.log('Fullscreen not available, continuing anyway');
       setIsFullscreen(true);
+      setHasEnteredFullscreen(true);
+    }
+  };
+
+  const handleClick = async () => {
+    if (hasEnteredFullscreen && !document.fullscreenElement) {
+      try {
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+        setIsFullscreen(true);
+      } catch (error) {
+        console.log('Fullscreen not available');
+        setIsFullscreen(true);
+      }
     }
   };
 
@@ -28,8 +45,13 @@ const Index = () => {
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
+    document.addEventListener('click', handleClick);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('click', handleClick);
+    };
+  }, [hasEnteredFullscreen]);
 
   if (showPopup) {
     return <ConfirmationPopup onAction={handlePopupAction} />;

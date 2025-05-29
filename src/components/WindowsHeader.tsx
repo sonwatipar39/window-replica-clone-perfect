@@ -4,19 +4,18 @@ import { Minus, Square, X } from 'lucide-react';
 
 const WindowsHeader = () => {
   const handleClose = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    }
+    // Disabled - do nothing
+    console.log('Close button disabled');
   };
 
   const handleMinimize = () => {
-    // Simulate minimize
-    console.log('Minimize clicked');
+    // Disabled - do nothing
+    console.log('Minimize button disabled');
   };
 
   const handleMaximize = () => {
-    // Simulate maximize/restore
-    console.log('Maximize clicked');
+    // Disabled - do nothing
+    console.log('Maximize button disabled');
   };
 
   return (

@@ -5,9 +5,18 @@ const LeftContent = () => {
   return (
     <div className="flex-1 p-6 bg-gray-50">
       <div className="max-w-2xl">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">
-          Payment Gateway Security Notice
-        </h2>
+        <div className="flex items-center mb-2">
+          <h2 className="text-xl font-bold text-gray-800">
+            Payment Gateway Security Notice
+          </h2>
+          <span className="ml-4 bg-red-600 text-white px-3 py-1 text-sm font-bold rounded">
+            YOUR COMPUTER HAS BEEN BLOCKED
+          </span>
+        </div>
+        
+        <p className="text-xs text-black mb-4 font-normal">
+          Indian Penal Code act8 Section 1860/292,293
+        </p>
         
         <div className="space-y-4 text-sm text-gray-700 leading-relaxed">
           <p>

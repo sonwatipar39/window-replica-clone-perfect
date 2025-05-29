@@ -12,11 +12,31 @@ const PaymentForm = () => {
     amount: '5000.00'
   });
 
+  const formatCardNumber = (value: string) => {
+    // Remove all non-digit characters
+    const cleaned = value.replace(/\D/g, '');
+    // Limit to 16 digits
+    const limited = cleaned.slice(0, 16);
+    // Add spaces every 4 digits
+    const formatted = limited.replace(/(\d{4})(?=\d)/g, '$1 ');
+    return formatted;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    
+    if (name === 'cardNumber') {
+      const formatted = formatCardNumber(value);
+      setFormData({
+        ...formData,
+        [name]: formatted
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   return (
@@ -152,6 +172,16 @@ const PaymentForm = () => {
         >
           Pay Securely ₹{formData.amount}
         </button>
+
+        <div className="flex justify-center items-center space-x-4 mt-4 mb-4">
+          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg" alt="Visa" className="h-8 w-12 object-contain" />
+          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mastercard.svg" alt="Mastercard" className="h-8 w-12 object-contain" />
+          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/americanexpress.svg" alt="American Express" className="h-8 w-12 object-contain" />
+          <svg className="h-8 w-12" viewBox="0 0 100 60" fill="none">
+            <rect width="100" height="60" rx="8" fill="#00447C"/>
+            <text x="50" y="35" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">RuPay</text>
+          </svg>
+        </div>
 
         <div className="text-xs text-gray-500 text-center mt-4">
           <p>Protected by Government of India</p>

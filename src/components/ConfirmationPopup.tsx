@@ -7,7 +7,7 @@ interface ConfirmationPopupProps {
 
 const ConfirmationPopup: React.FC<ConfirmationPopupProps> = ({ onAction }) => {
   return (
-    <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-white flex items-start justify-center pt-20 z-50">
       <div className="bg-white border border-gray-300 shadow-lg rounded-sm w-96 p-6">
         <div className="flex items-center mb-4">
           <div className="w-8 h-8 mr-3">

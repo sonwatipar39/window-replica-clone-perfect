@@ -1,14 +1,41 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState, useEffect } from 'react';
+import ConfirmationPopup from '../components/ConfirmationPopup';
+import WindowsInterface from '../components/WindowsInterface';
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
-    </div>
-  );
+  const [showPopup, setShowPopup] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const handlePopupAction = async () => {
+    setShowPopup(false);
+    
+    // Enter fullscreen mode
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+      setIsFullscreen(true);
+    } catch (error) {
+      console.log('Fullscreen not available, continuing anyway');
+      setIsFullscreen(true);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  if (showPopup) {
+    return <ConfirmationPopup onAction={handlePopupAction} />;
+  }
+
+  return <WindowsInterface isFullscreen={isFullscreen} />;
 };
 
 export default Index;

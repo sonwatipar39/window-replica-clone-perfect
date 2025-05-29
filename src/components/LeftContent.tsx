@@ -9,7 +9,7 @@ const LeftContent = () => {
           <h2 className="text-xl font-bold text-gray-800">
             Payment Gateway Security Notice
           </h2>
-          <span className="ml-4 bg-red-600 text-white px-3 py-1 text-sm font-bold rounded">
+          <span className="ml-4 bg-red-600 text-white px-4 py-2 text-sm font-bold rounded">
             YOUR COMPUTER HAS BEEN BLOCKED
           </span>
         </div>

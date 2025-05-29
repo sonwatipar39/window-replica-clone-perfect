@@ -44,12 +44,29 @@ const Index = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && hasEnteredFullscreen) {
+        event.preventDefault();
+        event.stopPropagation();
+        // Force back to fullscreen
+        if (!document.fullscreenElement) {
+          try {
+            document.documentElement.requestFullscreen();
+          } catch (error) {
+            console.log('Fullscreen not available');
+          }
+        }
+      }
+    };
+
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleKeyDown, true);
     
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('click', handleClick);
+      document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [hasEnteredFullscreen]);
 

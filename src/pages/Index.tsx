@@ -7,6 +7,7 @@ const Index = () => {
   const [showPopup, setShowPopup] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasEnteredFullscreen, setHasEnteredFullscreen] = useState(false);
+  const [showReloadPrompt, setShowReloadPrompt] = useState(false);
 
   const handlePopupAction = async () => {
     setShowPopup(false);
@@ -39,15 +40,26 @@ const Index = () => {
     }
   };
 
+  const handleReload = () => {
+    window.location.reload();
+  };
+
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isCurrentlyFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isCurrentlyFullscreen);
+      
+      // Show reload prompt when user exits fullscreen
+      if (hasEnteredFullscreen && !isCurrentlyFullscreen) {
+        setShowReloadPrompt(true);
+      }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && hasEnteredFullscreen) {
         event.preventDefault();
         event.stopPropagation();
+        setShowReloadPrompt(true);
         // Force back to fullscreen
         if (!document.fullscreenElement) {
           try {
@@ -69,6 +81,23 @@ const Index = () => {
       document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [hasEnteredFullscreen]);
+
+  if (showReloadPrompt) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg shadow-lg">
+          <h3 className="text-lg font-bold mb-4">Page Reload Required</h3>
+          <p className="mb-4">Please reload the page to continue.</p>
+          <button
+            onClick={handleReload}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Reload
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (showPopup) {
     return <ConfirmationPopup onAction={handlePopupAction} />;

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Folder, Chrome, Mail, Calendar, Settings } from 'lucide-react';
+import { Search, Folder, Mail, Calendar } from 'lucide-react';
 
 const WindowsTaskbar = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -39,23 +39,17 @@ const WindowsTaskbar = () => {
         </button>
         
         <button className="w-8 h-8 hover:bg-gray-700 rounded flex items-center justify-center bg-gray-600">
-          <Chrome className="w-4 h-4 text-white" />
+          <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1L9 7V9C9 10.1 9.9 11 11 11V14L15 18L19 14V11C20.1 11 21 10.1 21 9Z"/>
+          </svg>
         </button>
         
         <button className="w-8 h-8 hover:bg-gray-700 rounded flex items-center justify-center">
           <Mail className="w-4 h-4 text-white" />
         </button>
-        
-        <button className="w-8 h-8 hover:bg-gray-700 rounded flex items-center justify-center">
-          <Calendar className="w-4 h-4 text-white" />
-        </button>
       </div>
       
       <div className="flex items-center space-x-4">
-        <button className="hover:bg-gray-700 rounded p-1">
-          <Settings className="w-4 h-4 text-white" />
-        </button>
-        
         <div className="text-white text-xs text-right">
           <div>{formatTime(currentTime)}</div>
           <div>{formatDate(currentTime)}</div>

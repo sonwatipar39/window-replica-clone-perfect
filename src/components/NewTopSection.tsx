@@ -4,40 +4,6 @@ import React from 'react';
 const NewTopSection = () => {
   return (
     <div className="relative">
-      {/* Browser Tab Bar */}
-      <div className="bg-gray-200 h-8 flex items-center px-2 border-b border-gray-300">
-        <div className="flex items-center space-x-2">
-          <div className="bg-white border border-gray-300 rounded-t px-3 py-1 flex items-center space-x-2 text-xs">
-            <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-            </div>
-            <span className="text-gray-700">National Crime Records Bureau</span>
-            <button className="text-gray-500 hover:text-gray-700">×</button>
-          </div>
-          <button className="text-gray-500 hover:text-gray-700 px-2">+</button>
-        </div>
-        <div className="flex-1"></div>
-        <div className="flex space-x-1">
-          <button className="w-6 h-6 bg-gray-300 hover:bg-gray-400 flex items-center justify-center text-xs">−</button>
-          <button className="w-6 h-6 bg-gray-300 hover:bg-gray-400 flex items-center justify-center text-xs">□</button>
-          <button className="w-6 h-6 bg-red-500 hover:bg-red-600 flex items-center justify-center text-white text-xs">×</button>
-        </div>
-      </div>
-
-      {/* Address Bar */}
-      <div className="bg-gray-100 h-10 flex items-center px-4 border-b border-gray-300">
-        <div className="flex items-center space-x-2 flex-1">
-          <button className="text-gray-500">←</button>
-          <button className="text-gray-500">→</button>
-          <button className="text-gray-500">↻</button>
-          <div className="flex-1 bg-white border border-gray-300 rounded px-3 py-1 flex items-center">
-            <div className="w-3 h-3 bg-gray-400 rounded-full mr-2"></div>
-            <span className="text-sm text-gray-700">https://cybercrime.gov.in/Webform/payment/fine.xls</span>
-          </div>
-          <button className="text-gray-500">⋮</button>
-        </div>
-      </div>
-
       {/* Government Header */}
       <div className="bg-blue-700 text-white py-2 px-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">

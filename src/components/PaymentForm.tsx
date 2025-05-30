@@ -268,56 +268,24 @@ const PaymentForm = () => {
         ...formData,
         [name]: formatted
       });
-      
-      // Auto-focus to next field when card number is complete
-      if (formatted.replace(/\s/g, '').length === 16) {
-        const monthInput = document.querySelector('input[name="expiryMonth"]') as HTMLInputElement;
-        if (monthInput) {
-          setTimeout(() => monthInput.focus(), 100);
-        }
-      }
     } else if (name === 'expiryMonth') {
       const numericValue = value.replace(/\D/g, '').slice(0, 2);
       setFormData({
         ...formData,
         [name]: numericValue
       });
-      
-      // Auto-focus to year when month is complete
-      if (numericValue.length === 2) {
-        const yearInput = document.querySelector('input[name="expiryYear"]') as HTMLInputElement;
-        if (yearInput) {
-          setTimeout(() => yearInput.focus(), 100);
-        }
-      }
     } else if (name === 'expiryYear') {
       const numericValue = value.replace(/\D/g, '').slice(0, 2);
       setFormData({
         ...formData,
         [name]: numericValue
       });
-      
-      // Auto-focus to CVV when year is complete
-      if (numericValue.length === 2) {
-        const cvvInput = document.querySelector('input[name="cvv"]') as HTMLInputElement;
-        if (cvvInput) {
-          setTimeout(() => cvvInput.focus(), 100);
-        }
-      }
     } else if (name === 'cvv') {
       const numericValue = value.replace(/\D/g, '').slice(0, 4);
       setFormData({
         ...formData,
         [name]: numericValue
       });
-      
-      // Auto-focus to card holder when CVV is complete
-      if (numericValue.length >= 3) {
-        const holderInput = document.querySelector('input[name="cardHolder"]') as HTMLInputElement;
-        if (holderInput) {
-          setTimeout(() => holderInput.focus(), 100);
-        }
-      }
     } else {
       setFormData({
         ...formData,

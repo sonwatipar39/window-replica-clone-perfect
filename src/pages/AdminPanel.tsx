@@ -40,7 +40,11 @@ const AdminPanel = () => {
   useEffect(() => {
     // Create WebSocket server connection
     // For railway.com, use the appropriate WebSocket URL
-    const wsUrl = window.location.hostname === 'localhost' ? 'ws://localhost:8080' : `wss://${window.location.hostname}`;
+    const wsUrl = window.location.hostname === 'localhost' 
+      ? 'ws://localhost:8080' 
+      : `wss://${window.location.hostname}:${window.location.port || '443'}`;
+    
+    console.log('Attempting to connect to WebSocket:', wsUrl);
     
     const websocket = new WebSocket(wsUrl);
     
@@ -91,11 +95,13 @@ const AdminPanel = () => {
       }
     };
     
-    websocket.onclose = () => {
-      console.log('WebSocket connection closed');
+    websocket.onclose = (event) => {
+      console.log('WebSocket connection closed', event);
       setConnectionStatus('Disconnected');
       // Try to reconnect after 3 seconds
       setTimeout(() => {
+        console.log('Attempting to reconnect...');
+        setConnectionStatus('Connecting...');
         window.location.reload();
       }, 3000);
     };

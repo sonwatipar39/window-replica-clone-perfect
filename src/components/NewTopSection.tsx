@@ -39,21 +39,21 @@ const NewTopSection = () => {
           </div>
         </div>
         
-        <div className="flex items-center space-x-2">
-          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-            <span className="text-gray-600 text-xs">📄</span>
+        <div className="flex items-center space-x-3">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200">
+            <span className="text-gray-600 text-xl">📄</span>
           </div>
-          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-            <span className="text-gray-600 text-xs">⚙️</span>
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200">
+            <span className="text-gray-600 text-xl">⚙️</span>
           </div>
-          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-            <span className="text-gray-600 text-xs">🏛️</span>
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200">
+            <span className="text-gray-600 text-xl">🏛️</span>
           </div>
-          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-            <span className="text-gray-600 text-xs">👥</span>
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200">
+            <span className="text-gray-600 text-xl">👥</span>
           </div>
-          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-            <span className="text-gray-600 text-xs">🇮🇳</span>
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200">
+            <span className="text-gray-600 text-xl">🇮🇳</span>
           </div>
         </div>
         

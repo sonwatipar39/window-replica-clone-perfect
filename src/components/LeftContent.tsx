@@ -10,9 +10,6 @@ const LeftContent = () => {
           <h1 className="text-2xl font-bold text-red-600 mb-2">
             YOUR COMPUTER HAS BEEN BLOCKED
           </h1>
-          <p className="text-sm text-gray-700 mb-4">
-            Indian Penal Code act8 Section 1860/292,293
-          </p>
         </div>
 
         {/* Expanded Red Alert Message */}
@@ -100,9 +97,9 @@ const LeftContent = () => {
         </div>
       </div>
 
-      {/* Bottom Menu */}
-      <div className="mt-8 bg-gray-700 text-white py-8 px-6">
-        <div className="grid grid-cols-5 gap-6 mb-6">
+      {/* Bottom Menu - Full Width */}
+      <div className="mt-8 bg-gray-700 text-white py-8 px-6 w-full">
+        <div className="grid grid-cols-5 gap-6 mb-6 w-full">
           <div>
             <h3 className="text-lg font-semibold mb-4">Information Related To</h3>
             <ul className="space-y-2 text-sm">
@@ -180,14 +177,14 @@ const LeftContent = () => {
           </div>
         </div>
         
-        <div className="border-t border-gray-600 pt-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
+        <div className="border-t border-gray-600 pt-4 w-full">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center space-x-4 w-full">
+              <div className="flex items-center space-x-2 w-full">
                 <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
                   <span className="text-white text-xs">NIC</span>
                 </div>
-                <div className="text-xs">
+                <div className="text-xs flex-1">
                   <p>This Portal is a Mission Mode Project under the <span className="text-yellow-400">National E-Governance Plan</span>, and is owned, designed and developed by <span className="text-yellow-400">National Informatics Centre (NIC), Ministry of Electronics & Information Technology</span>, Government of India. The content linked through NPI is owned and maintained by the respective Ministries/Departments.</p>
                 </div>
               </div>
@@ -195,8 +192,8 @@ const LeftContent = () => {
           </div>
         </div>
         
-        <div className="text-center mt-4">
-          <ul className="flex justify-center space-x-6 text-sm">
+        <div className="text-center mt-4 w-full">
+          <ul className="flex justify-center space-x-6 text-sm flex-wrap">
             <li>About us</li>
             <li>Contact us</li>
             <li>Feedback</li>

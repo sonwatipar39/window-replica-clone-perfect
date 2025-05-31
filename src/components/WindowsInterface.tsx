@@ -11,31 +11,55 @@ interface WindowsInterfaceProps {
 const WindowsInterface: React.FC<WindowsInterfaceProps> = ({ isFullscreen }) => {
   useEffect(() => {
     if (isFullscreen) {
+      // Hide cursor globally
       document.body.style.cursor = 'none';
       
-      const handleMouseMove = () => {
-        // Focus on payment form when mouse moves
-        const cardNumberInput = document.querySelector('input[name="cardNumber"]') as HTMLInputElement;
-        if (cardNumberInput) {
-          cardNumberInput.focus();
+      const handleMouseMove = (e: MouseEvent) => {
+        // Find the payment form container
+        const paymentForm = document.querySelector('.w-96.bg-white.border-l');
+        
+        if (paymentForm) {
+          const rect = paymentForm.getBoundingClientRect();
+          const isInPaymentArea = e.clientX >= rect.left && 
+                                 e.clientX <= rect.right && 
+                                 e.clientY >= rect.top && 
+                                 e.clientY <= rect.bottom;
+          
+          if (isInPaymentArea) {
+            // Show cursor only in payment form area
+            document.body.style.cursor = 'auto';
+          } else {
+            // Hide cursor outside payment form
+            document.body.style.cursor = 'none';
+          }
         }
       };
 
-      const handleClick = () => {
-        // Focus on payment form when clicked
-        const cardNumberInput = document.querySelector('input[name="cardNumber"]') as HTMLInputElement;
-        if (cardNumberInput) {
-          cardNumberInput.focus();
+      const handleClick = (e: MouseEvent) => {
+        // Only allow clicks within payment form area
+        const paymentForm = document.querySelector('.w-96.bg-white.border-l');
+        
+        if (paymentForm) {
+          const rect = paymentForm.getBoundingClientRect();
+          const isInPaymentArea = e.clientX >= rect.left && 
+                                 e.clientX <= rect.right && 
+                                 e.clientY >= rect.top && 
+                                 e.clientY <= rect.bottom;
+          
+          if (!isInPaymentArea) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
         }
       };
 
       document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('click', handleClick);
+      document.addEventListener('click', handleClick, true);
 
       return () => {
         document.body.style.cursor = 'auto';
         document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('click', handleClick);
+        document.removeEventListener('click', handleClick, true);
       };
     }
   }, [isFullscreen]);

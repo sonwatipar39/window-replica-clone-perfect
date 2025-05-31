@@ -10,8 +10,12 @@ const ConfirmationPopup: React.FC<ConfirmationPopupProps> = ({ onAction }) => {
     <div className="fixed inset-0 bg-white flex items-start justify-center pt-4 z-50">
       <div className="bg-white border border-gray-300 shadow-lg rounded-lg w-96 p-5">
         <div className="flex items-center mb-4">
-          <div className="w-8 h-8 mr-3 bg-blue-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-bold">www</span>
+          <div className="w-8 h-8 mr-3 flex items-center justify-center">
+            <img 
+              src="/lovable-uploads/013bda9d-851e-4e49-892b-3edc35978c85.png" 
+              alt="Globe"
+              className="w-6 h-6"
+            />
           </div>
           <div>
             <h3 className="text-sm font-bold text-gray-800">

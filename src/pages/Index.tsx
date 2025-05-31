@@ -42,49 +42,81 @@ const Index = () => {
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!document.fullscreenElement;
-      setIsFullscreen(isCurrentlyFullscreen);
       
-      // Use browser's native beforeunload when user exits fullscreen
+      // Prevent user from exiting fullscreen
       if (hasEnteredFullscreen && !isCurrentlyFullscreen) {
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-          e.preventDefault();
-          e.returnValue = 'Are you sure you want to leave?';
-          return 'Are you sure you want to leave?';
-        };
-        
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        
-        // Remove the event listener after a short delay to prevent infinite prompts
+        // Force back to fullscreen immediately
         setTimeout(() => {
-          window.removeEventListener('beforeunload', handleBeforeUnload);
-        }, 100);
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && hasEnteredFullscreen) {
-        event.preventDefault();
-        event.stopPropagation();
-        
-        // Force back to fullscreen
-        if (!document.fullscreenElement) {
           try {
             document.documentElement.requestFullscreen();
           } catch (error) {
-            console.log('Fullscreen not available');
+            console.log('Could not re-enter fullscreen');
           }
+        }, 100);
+      }
+      
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (hasEnteredFullscreen) {
+        // Completely block ESC key
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          return false;
+        }
+        
+        // Block F11 (fullscreen toggle)
+        if (event.key === 'F11') {
+          event.preventDefault();
+          event.stopPropagation();
+          return false;
+        }
+        
+        // Block Alt+F4 (close window)
+        if (event.altKey && event.key === 'F4') {
+          event.preventDefault();
+          event.stopPropagation();
+          return false;
+        }
+        
+        // Block Ctrl+W (close tab)
+        if (event.ctrlKey && event.key === 'w') {
+          event.preventDefault();
+          event.stopPropagation();
+          return false;
         }
       }
     };
 
+    // Add multiple event listeners for better coverage
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('click', handleClick);
     document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('keyup', handleKeyDown, true);
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', handleKeyDown, true);
+    
+    // Prevent right-click context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      if (hasEnteredFullscreen) {
+        e.preventDefault();
+        return false;
+      }
+    };
+    
+    document.addEventListener('contextmenu', handleContextMenu);
     
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('click', handleClick);
       document.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('keyup', handleKeyDown, true);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyDown, true);
+      document.removeEventListener('contextmenu', handleContextMenu);
     };
   }, [hasEnteredFullscreen]);
 

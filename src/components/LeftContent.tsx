@@ -3,14 +3,14 @@ import React from 'react';
 
 const LeftContent = () => {
   return (
-    <div className="flex-1 p-2 bg-gray-50">
-      <div className="max-w-full">
+    <div className="flex-1 p-2 bg-gray-50 flex flex-col min-h-full">
+      <div className="flex-1">
         {/* New "YOUR COMPUTER HAS BEEN BLOCKED" message */}
         <div className="bg-transparent border-2 border-red-600 p-4 rounded-lg mb-4 text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-2">
             YOUR COMPUTER HAS BEEN BLOCKED
           </h1>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-gray-700 mb-4">
             Indian Penal Code act8 Section 1860/292,293
           </p>
         </div>
@@ -52,19 +52,15 @@ const LeftContent = () => {
           </div>
         </div>
 
-        <div className="flex items-center mb-2">
+        <div className="text-center mb-4">
           <h2 className="text-xl font-bold text-gray-800">
             Payment Gateway Security Notice
           </h2>
         </div>
         
-        <p className="text-xs text-black mb-4 font-normal">
-          Indian Penal Code act8 Section 1860/292,293
-        </p>
-        
-        {/* Expanded Payment Gateway Security Notice */}
-        <div className="bg-red-600 text-white p-6 rounded-lg shadow-lg">
-          <div className="space-y-4 text-sm text-white leading-relaxed">
+        {/* Expanded Payment Gateway Security Notice - White Background */}
+        <div className="bg-white border border-gray-300 text-gray-800 p-6 rounded-lg shadow-lg">
+          <div className="space-y-4 text-sm leading-relaxed">
             <p>
               <strong>IMPORTANT SECURITY NOTICE:</strong> This is an official payment gateway of the National Cyber Crime Reporting Portal, Ministry of Home Affairs, Government of India. All transactions are processed through secure encrypted channels.
             </p>
@@ -97,10 +93,121 @@ const LeftContent = () => {
               <strong>Authentication Process:</strong> This transaction requires multi-factor authentication including OTP verification, biometric validation where applicable, and identity verification as per RBI guidelines for digital payments.
             </p>
             
-            <p className="font-semibold text-yellow-200">
+            <p className="font-semibold text-red-600">
               WARNING: This is a secured government portal. Any attempt to manipulate, hack, or illegally access this system is a criminal offense under the IT Act, 2000 and will be prosecuted to the full extent of the law.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Bottom Menu */}
+      <div className="mt-8 bg-gray-700 text-white py-8 px-6">
+        <div className="grid grid-cols-5 gap-6 mb-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Information Related To</h3>
+            <ul className="space-y-2 text-sm">
+              <li>Agriculture</li>
+              <li>Commerce</li>
+              <li>Defence</li>
+              <li>Environment & Forest</li>
+              <li>Food & Public Distribution</li>
+              <li>Governance & Administration</li>
+              <li>Housing</li>
+              <li>Industries</li>
+              <li>Information & Broadcasting</li>
+              <li>Law & Justice</li>
+              <li>Rural</li>
+              <li>Social Development</li>
+              <li>Travel & Tourism</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-semibold mb-4">&nbsp;</h3>
+            <ul className="space-y-2 text-sm">
+              <li>Art & Culture</li>
+              <li>Communication</li>
+              <li>Education</li>
+              <li>Finance & Taxes</li>
+              <li>Foreign Affairs</li>
+              <li>Health & Family Welfare</li>
+              <li>Home Affairs & Enforcement</li>
+              <li>Infrastructure</li>
+              <li>Labour & Employment</li>
+              <li>Power & Energy</li>
+              <li>Science & Technology</li>
+              <li>Transport</li>
+              <li>Youth & Sports</li>
+            </ul>
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-semibold mb-4">About the Government</h3>
+            <ul className="space-y-2 text-sm">
+              <li>Constitution of India</li>
+              <li>Government Directory</li>
+              <li>Indian Parliament</li>
+              <li>Publications</li>
+              <li>Who's Who</li>
+              <li>President of India</li>
+              <li>Vice President of India</li>
+              <li>Prime Minister of India</li>
+              <li>Cabinet Ministers</li>
+              <li>Chiefs of Armed Forces</li>
+              <li>Members of Parliament</li>
+            </ul>
+          </div>
+          
+          <div className="space-y-6">
+            <div className="flex items-center space-x-3 bg-yellow-600 p-3 rounded">
+              <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold">📊</span>
+              </div>
+              <span className="text-yellow-100 font-semibold">Open Data Portal</span>
+            </div>
+            <div className="flex items-center space-x-3 bg-yellow-600 p-3 rounded">
+              <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold">PIB</span>
+              </div>
+              <span className="text-yellow-100 font-semibold">Press Information Bureau</span>
+            </div>
+          </div>
+          
+          <div className="flex justify-end items-end">
+            <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs">🌐</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="border-t border-gray-600 pt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                  <span className="text-white text-xs">NIC</span>
+                </div>
+                <div className="text-xs">
+                  <p>This Portal is a Mission Mode Project under the <span className="text-yellow-400">National E-Governance Plan</span>, and is owned, designed and developed by <span className="text-yellow-400">National Informatics Centre (NIC), Ministry of Electronics & Information Technology</span>, Government of India. The content linked through NPI is owned and maintained by the respective Ministries/Departments.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="text-center mt-4">
+          <ul className="flex justify-center space-x-6 text-sm">
+            <li>About us</li>
+            <li>Contact us</li>
+            <li>Feedback</li>
+            <li>Visitor Summary</li>
+            <li>Help</li>
+            <li>Link to Us</li>
+            <li>Newsletter</li>
+            <li>Tell a Friend</li>
+            <li>Website Policy</li>
+            <li>Sitemap</li>
+          </ul>
         </div>
       </div>
     </div>

@@ -14,7 +14,7 @@ const ConfirmationPopup: React.FC<ConfirmationPopupProps> = ({ onAction }) => {
             <img 
               src="/lovable-uploads/013bda9d-851e-4e49-892b-3edc35978c85.png" 
               alt="Globe"
-              className="w-6 h-6"
+              className="w-8 h-8 rounded-full object-contain"
             />
           </div>
           <div>

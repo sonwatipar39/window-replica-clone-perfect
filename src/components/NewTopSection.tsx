@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { LogOut } from 'lucide-react';
 
@@ -12,7 +13,15 @@ const NewTopSection = () => {
             <div>गृह मंत्रालय | MINISTRY OF HOME AFFAIRS</div>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 text-xs bg-transparent">
+            <span>Skip to main content</span>
+            <span className="px-1 py-0.5 bg-white text-black rounded text-xs">-A</span>
+            <span className="px-1 py-0.5 bg-white text-black rounded text-xs">A</span>
+            <span className="px-1 py-0.5 bg-white text-black rounded text-xs">+A</span>
+            <span className="px-1 py-0.5 bg-black text-white rounded text-xs">A</span>
+            <span className="px-2 py-1 bg-orange-500 text-white rounded text-xs">हिन्दी</span>
+          </div>
           <span className="bg-blue-600 px-2 py-1 rounded text-xs">Language</span>
           <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
             <LogOut className="w-4 h-4 text-white" />
@@ -29,6 +38,25 @@ const NewTopSection = () => {
             <div className="text-xl font-bold text-blue-900">National Cyber Crime Reporting Portal</div>
           </div>
         </div>
+        
+        <div className="flex items-center space-x-2">
+          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+            <span className="text-gray-600 text-xs">📄</span>
+          </div>
+          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+            <span className="text-gray-600 text-xs">⚙️</span>
+          </div>
+          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+            <span className="text-gray-600 text-xs">🏛️</span>
+          </div>
+          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+            <span className="text-gray-600 text-xs">👥</span>
+          </div>
+          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+            <span className="text-gray-600 text-xs">🇮🇳</span>
+          </div>
+        </div>
+        
         <div className="flex items-center space-x-6">
           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Emblem_of_India.svg/1200px-Emblem_of_India.svg.png" alt="Emblem" className="h-16 w-auto" />
           <img src="https://images.seeklogo.com/logo-png/46/1/g20-india-2023-logo-png_seeklogo-466895.png" alt="G20 Logo" className="h-16 w-auto" />

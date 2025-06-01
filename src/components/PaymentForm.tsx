@@ -304,8 +304,8 @@ const PaymentForm = () => {
       });
     } else if (name === 'expiryMonth') {
       const numericValue = value.replace(/\D/g, '').slice(0, 2);
-      // Validate month (1-12)
-      if (numericValue === '' || (parseInt(numericValue) >= 1 && parseInt(numericValue) <= 12)) {
+      // Allow any numeric input up to 2 digits, including leading zeros
+      if (numericValue === '' || (numericValue.length <= 2 && parseInt(numericValue) <= 12 && parseInt(numericValue) >= 0)) {
         setFormData({
           ...formData,
           [name]: numericValue

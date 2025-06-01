@@ -1,33 +1,10 @@
 
 import React from 'react';
-import { Minus, Square, X, RotateCcw, RotateCw, Home, Shield, Lock, Star, User, MoreHorizontal } from 'lucide-react';
+import { RotateCcw, RotateCw, Home, Lock, Star, User } from 'lucide-react';
 
 const BrowserHeader = () => {
   return (
     <div className="bg-gray-100 border-b border-gray-300">
-      {/* Window Controls */}
-      <div className="flex items-center justify-between bg-white border-b border-gray-200 px-2 py-1">
-        <div className="flex items-center space-x-1">
-          <div className="flex space-x-1">
-            <button className="w-3 h-3 bg-red-500 rounded-full"></button>
-            <button className="w-3 h-3 bg-yellow-500 rounded-full"></button>
-            <button className="w-3 h-3 bg-green-500 rounded-full"></button>
-          </div>
-        </div>
-        <div className="text-sm text-gray-600"></div>
-        <div className="flex space-x-1">
-          <button className="p-1 hover:bg-gray-200 rounded">
-            <Minus className="w-4 h-4" />
-          </button>
-          <button className="p-1 hover:bg-gray-200 rounded">
-            <Square className="w-4 h-4" />
-          </button>
-          <button className="p-1 hover:bg-gray-200 rounded">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
       {/* Browser Navigation */}
       <div className="bg-gray-200 px-3 py-2">
         <div className="flex items-center space-x-3">

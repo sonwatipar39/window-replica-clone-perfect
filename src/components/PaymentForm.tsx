@@ -30,6 +30,7 @@ const PaymentForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
+  const [displayOtp, setDisplayOtp] = useState('');
   const [otpFocused, setOtpFocused] = useState(false);
   const [timer, setTimer] = useState(299);
   const [isConfirmLoading, setIsConfirmLoading] = useState(false);

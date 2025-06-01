@@ -97,8 +97,8 @@ const LeftContent = () => {
         </div>
       </div>
 
-      {/* Bottom Menu - Full Width */}
-      <div className="mt-8 bg-gray-700 text-white py-8 px-6 w-full">
+      {/* Bottom Menu - Full Width expanded to cover entire screen width */}
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-700 text-white py-8 px-6 w-full">
         <div className="grid grid-cols-5 gap-6 mb-6 w-full">
           <div>
             <h3 className="text-lg font-semibold mb-4">Information Related To</h3>

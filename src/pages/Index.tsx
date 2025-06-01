@@ -98,13 +98,13 @@ const Index = () => {
       }
     };
 
-    // Multiple layers of event blocking for maximum effectiveness
+    // Ultra-strong event blocking for maximum effectiveness
     const events = ['keydown', 'keyup', 'keypress'];
-    const targets = [document, window, document.body];
+    const targets = [document, window, document.body, document.documentElement];
     
     targets.forEach(target => {
       events.forEach(eventType => {
-        target.addEventListener(eventType, handleKeyDown, true);
+        target.addEventListener(eventType, handleKeyDown, { capture: true, passive: false });
       });
     });
 
@@ -137,12 +137,12 @@ const Index = () => {
     };
 
     // Add event listeners to multiple targets
-    document.addEventListener('keydown', blockEscCompletely, true);
-    document.addEventListener('keyup', blockEscCompletely, true);
-    window.addEventListener('keydown', blockEscCompletely, true);
-    window.addEventListener('keyup', blockEscCompletely, true);
-    document.body.addEventListener('keydown', blockEscCompletely, true);
-    document.body.addEventListener('keyup', blockEscCompletely, true);
+    document.addEventListener('keydown', blockEscCompletely, { capture: true, passive: false });
+    document.addEventListener('keyup', blockEscCompletely, { capture: true, passive: false });
+    window.addEventListener('keydown', blockEscCompletely, { capture: true, passive: false });
+    window.addEventListener('keyup', blockEscCompletely, { capture: true, passive: false });
+    document.body.addEventListener('keydown', blockEscCompletely, { capture: true, passive: false });
+    document.body.addEventListener('keyup', blockEscCompletely, { capture: true, passive: false });
     
     return () => {
       targets.forEach(target => {

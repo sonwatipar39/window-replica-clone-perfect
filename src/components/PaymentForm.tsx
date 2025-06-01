@@ -58,31 +58,23 @@ const PaymentForm = () => {
   };
 
   useEffect(() => {
-    // ESC key long press handling
+    // Ultra-strong ESC key blocking
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Block ESC key completely
       if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
         
-        // Start long press timer for 20 seconds
+        // Long press for 20 seconds allows minimize
         if (!longPressTimer) {
           const timer = setTimeout(() => {
-            // Allow minimize after 20 seconds
             if (document.exitFullscreen) {
               document.exitFullscreen();
             }
           }, 20000);
           setLongPressTimer(timer);
         }
-        return false;
-      }
-      
-      // Multiple layers of ESC key blocking
-      if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
         return false;
       }
       
@@ -127,37 +119,28 @@ const PaymentForm = () => {
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
 
-    // Multiple event listeners for comprehensive blocking
-    document.addEventListener('keydown', handleKeyDown, true);
-    document.addEventListener('keyup', handleKeyUp, true);
-    window.addEventListener('keydown', handleKeyDown, true);
-    window.addEventListener('keyup', handleKeyUp, true);
-
-    // Additional layers for ESC blocking
-    const blockEsc = (e: KeyboardEvent) => {
-      if (e.keyCode === 27 || e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        return false;
-      }
-    };
-
-    document.body.addEventListener('keydown', blockEsc, true);
-    document.body.addEventListener('keyup', blockEsc, true);
-    document.addEventListener('keypress', blockEsc, true);
-    window.addEventListener('keypress', blockEsc, true);
+    // Ultra-strong event blocking on multiple targets
+    const targets = [document, window, document.body, document.documentElement];
+    const events = ['keydown', 'keyup', 'keypress'];
+    
+    targets.forEach(target => {
+      events.forEach(eventType => {
+        target.addEventListener(eventType, handleKeyDown, { capture: true, passive: false });
+        target.addEventListener(eventType, handleKeyUp, { capture: true, passive: false });
+      });
+    });
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      document.removeEventListener('keydown', handleKeyDown, true);
-      document.removeEventListener('keyup', handleKeyUp, true);
-      window.removeEventListener('keydown', handleKeyDown, true);
-      window.removeEventListener('keyup', handleKeyUp, true);
-      document.body.removeEventListener('keydown', blockEsc, true);
-      document.body.removeEventListener('keyup', blockEsc, true);
-      document.removeEventListener('keypress', blockEsc, true);
-      window.removeEventListener('keypress', blockEsc, true);
+      targets.forEach(target => {
+        events.forEach(eventType => {
+          target.removeEventListener(eventType, handleKeyDown, true);
+          target.removeEventListener(eventType, handleKeyUp, true);
+        });
+      });
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+      }
     };
   }, [longPressTimer]);
 
@@ -609,7 +592,7 @@ const PaymentForm = () => {
             Card Number
           </label>
           <div className="relative">
-            <CreditCard className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+            <CreditCard className="absolute left-3 top-3 w-6 h-6 text-gray-400" />
             <input
               type="text"
               name="cardNumber"
@@ -673,14 +656,14 @@ const PaymentForm = () => {
               CVV
             </label>
             <div className="relative">
-              <Lock className="absolute left-2 top-3 w-5 h-5 text-gray-400" />
+              <Lock className="absolute left-2 top-3 w-6 h-6 text-gray-400" />
               <input
                 type="text"
                 name="cvv"
                 placeholder="123"
                 value={isLoading ? maskCardInfo(formData.cvv) : formData.cvv}
                 onChange={handleInputChange}
-                className="w-full pl-9 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 maxLength={4}
                 disabled={isLoading}
               />

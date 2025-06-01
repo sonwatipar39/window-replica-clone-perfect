@@ -67,7 +67,7 @@ const WindowsInterface: React.FC<WindowsInterfaceProps> = ({ isFullscreen }) => 
   return (
     <div className="h-screen w-screen bg-blue-900 flex flex-col overflow-hidden">
       <WindowsHeader />
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden pb-10">
         <MainContent />
       </div>
       <WindowsTaskbar />

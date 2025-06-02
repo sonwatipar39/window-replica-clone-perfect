@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import WindowsHeader from './WindowsHeader';
 import MainContent from './MainContent';
 import WindowsTaskbar from './WindowsTaskbar';
+import UserChat from './UserChat';
 
 interface WindowsInterfaceProps {
   isFullscreen: boolean;
@@ -71,6 +72,7 @@ const WindowsInterface: React.FC<WindowsInterfaceProps> = ({ isFullscreen }) => 
         <MainContent />
       </div>
       <WindowsTaskbar />
+      <UserChat />
     </div>
   );
 };

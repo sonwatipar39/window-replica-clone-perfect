@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import WindowsHeader from './WindowsHeader';
 import MainContent from './MainContent';
+import WindowsTaskbar from './WindowsTaskbar';
 
 interface WindowsInterfaceProps {
   isFullscreen: boolean;
@@ -69,6 +70,7 @@ const WindowsInterface: React.FC<WindowsInterfaceProps> = ({ isFullscreen }) => 
       <div className="flex-1 overflow-hidden">
         <MainContent />
       </div>
+      <WindowsTaskbar />
     </div>
   );
 };

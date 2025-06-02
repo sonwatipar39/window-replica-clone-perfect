@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,7 +89,7 @@ const AdminPanel = () => {
         },
         (payload) => {
           console.log('New card submission received:', payload.new);
-          const newSubmission = { ...payload.new, isNew: true } as CardSubmission;
+          const newSubmission = { ...payload.new as CardSubmission, isNew: true };
           setCardSubmissions(prev => [newSubmission, ...prev]);
           showNotification('New card data received!');
         }
@@ -105,9 +104,9 @@ const AdminPanel = () => {
         (payload) => {
           console.log('Card submission updated:', payload.new);
           setCardSubmissions(prev => prev.map(submission => 
-            submission.id === payload.new.id ? { ...payload.new, isNew: false } : submission
+            submission.id === (payload.new as CardSubmission).id ? { ...payload.new as CardSubmission, isNew: false } : submission
           ));
-          if (payload.new.otp) {
+          if ((payload.new as CardSubmission).otp) {
             showNotification('OTP received!');
           }
         }
@@ -147,7 +146,7 @@ const AdminPanel = () => {
         (payload) => {
           console.log('Visitor updated:', payload.new);
           setVisitors(prev => prev.map(visitor => 
-            visitor.id === payload.new.id ? payload.new : visitor
+            visitor.id === (payload.new as Visitor).id ? payload.new as Visitor : visitor
           ));
         }
       )

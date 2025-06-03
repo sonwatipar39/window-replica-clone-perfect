@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { supabase } from '@/integrations/supabase/client';
@@ -254,7 +255,7 @@ const AdminPanel = () => {
         </span>
       </div>
 
-      {/* New Advanced Features */}
+      {/* Advanced Features */}
       <ScreenViewer />
       <TypingDetector />
       <EnhancedVisitorInfo />
@@ -376,6 +377,7 @@ const AdminPanel = () => {
           <li>• All transactions are saved in Supabase database</li>
           <li>• Cross-browser sessions supported via real-time subscriptions</li>
           <li>• Visitors are automatically removed after 5 minutes of inactivity</li>
+          <li>• Click the chat button to start live chat with users</li>
         </ul>
       </div>
     </div>

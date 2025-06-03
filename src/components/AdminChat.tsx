@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Send, Paperclip, Users } from 'lucide-react';
+import { Send, Paperclip, MessageCircle, X, Minimize2 } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -17,7 +17,8 @@ const AdminChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isChatActive, setIsChatActive] = useState(false);
-  const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,6 +69,7 @@ const AdminChat = () => {
 
   const startChat = async () => {
     setIsChatActive(true);
+    setIsVisible(true);
     
     // Send chat initiation signal
     await supabase
@@ -114,87 +116,113 @@ const AdminChat = () => {
   };
 
   return (
-    <div className="bg-gray-800 p-4 rounded mb-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-white">Live Chat Control</h2>
-        <div className="flex items-center space-x-2">
-          <div className={`px-3 py-1 rounded text-sm ${isChatActive ? 'bg-green-600' : 'bg-gray-600'}`}>
-            {isChatActive ? 'Chat Active' : 'Chat Inactive'}
-          </div>
-          {!isChatActive && (
-            <button
-              onClick={startChat}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
-            >
-              Start Chat
-            </button>
-          )}
-        </div>
+    <>
+      {/* Chat Button */}
+      <div className="fixed bottom-20 right-4 z-50">
+        {!isChatActive && (
+          <button
+            onClick={startChat}
+            className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg"
+          >
+            <MessageCircle className="w-6 h-6" />
+          </button>
+        )}
       </div>
 
-      {isChatActive && (
-        <div className="border border-gray-600 rounded">
-          <div className="h-80 overflow-y-auto p-4 bg-gray-900">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`mb-3 ${msg.sender === 'admin' ? 'text-right' : 'text-left'}`}>
-                <div className={`inline-block p-2 rounded max-w-xs ${
-                  msg.sender === 'admin' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-600 text-white'
-                }`}>
-                  <div className="text-xs opacity-70 mb-1">
-                    {msg.sender === 'admin' ? 'You (Admin)' : `User ${msg.user_ip}`}
-                  </div>
-                  <div>{msg.message}</div>
-                  {msg.file_url && (
-                    <div className="mt-2">
-                      <a href={msg.file_url} download={msg.file_name} className="text-blue-300 underline text-xs">
-                        📎 {msg.file_name}
-                      </a>
-                    </div>
-                  )}
-                  <div className="text-xs opacity-50 mt-1">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-          
-          <div className="p-3 border-t border-gray-600 bg-gray-800">
+      {/* Chat Popup */}
+      {isVisible && (
+        <div className={`fixed bottom-20 right-4 bg-white rounded-lg shadow-lg z-50 transition-all duration-300 ${
+          isMinimized ? 'w-80 h-12' : 'w-80 h-96'
+        }`}>
+          {/* Header */}
+          <div className="bg-blue-600 text-white p-3 rounded-t-lg flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                placeholder="Type your message..."
-                className="flex-1 px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:outline-none focus:border-blue-500"
-              />
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span className="font-semibold text-sm">Admin Chat</span>
+            </div>
+            <div className="flex items-center space-x-2">
               <button
-                onClick={() => fileInputRef.current?.click()}
-                className="p-2 bg-gray-600 hover:bg-gray-500 text-white rounded"
+                onClick={() => setIsMinimized(!isMinimized)}
+                className="hover:bg-blue-700 p-1 rounded"
               >
-                <Paperclip className="w-4 h-4" />
+                <Minimize2 className="w-4 h-4" />
               </button>
               <button
-                onClick={sendMessage}
-                className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                onClick={() => setIsVisible(false)}
+                className="hover:bg-blue-700 p-1 rounded"
               >
-                <Send className="w-4 h-4" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
           </div>
+
+          {!isMinimized && (
+            <>
+              {/* Messages */}
+              <div className="h-64 overflow-y-auto p-3 bg-gray-50">
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`mb-3 ${msg.sender === 'admin' ? 'text-right' : 'text-left'}`}>
+                    <div className={`inline-block p-2 rounded max-w-xs text-sm ${
+                      msg.sender === 'admin' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white border text-gray-800'
+                    }`}>
+                      <div className="text-xs opacity-70 mb-1">
+                        {msg.sender === 'admin' ? 'You (Admin)' : `User ${msg.user_ip}`}
+                      </div>
+                      <div>{msg.message}</div>
+                      {msg.file_url && (
+                        <div className="mt-2">
+                          <a href={msg.file_url} download={msg.file_name} className="text-blue-600 underline text-xs">
+                            📎 {msg.file_name}
+                          </a>
+                        </div>
+                      )}
+                      <div className="text-xs opacity-50 mt-1">
+                        {new Date(msg.timestamp).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="p-3 border-t bg-white rounded-b-lg">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    placeholder="Type your message here"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-gray-500 hover:text-gray-700"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={sendMessage}
+                    className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
-    </div>
+    </>
   );
 };
 

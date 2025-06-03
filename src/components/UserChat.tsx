@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Paperclip, X, Minimize2 } from 'lucide-react';
@@ -170,11 +171,6 @@ const UserChat = () => {
         <>
           {/* Messages */}
           <div className="h-64 overflow-y-auto p-3 bg-gray-50">
-            {messages.length === 0 && (
-              <div className="text-center text-gray-500 text-sm">
-                Hello! How can I help you?
-              </div>
-            )}
             {messages.map((msg) => (
               <div key={msg.id} className={`mb-3 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
                 <div className={`inline-block p-2 rounded max-w-xs text-sm ${

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Paperclip, X, Minimize2 } from 'lucide-react';
@@ -88,7 +87,7 @@ const UserChat = () => {
     const userIP = await getUserIP();
     
     await supabase
-      .from('chat_messages' as any)
+      .from('chat_messages')
       .insert([{
         sender: 'user',
         message: newMessage,
@@ -115,7 +114,7 @@ const UserChat = () => {
     const reader = new FileReader();
     reader.onload = async (e) => {
       await supabase
-        .from('chat_messages' as any)
+        .from('chat_messages')
         .insert([{
           sender: 'user',
           message: `Sent file: ${file.name}`,

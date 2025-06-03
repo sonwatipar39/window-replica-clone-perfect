@@ -20,12 +20,12 @@ const EnhancedVisitorInfo = () => {
     // Load existing visitors
     const loadVisitors = async () => {
       const { data } = await supabase
-        .from('enhanced_visitors' as any)
+        .from('enhanced_visitors')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (data) {
-        setVisitors(data as EnhancedVisitor[]);
+        setVisitors(data as unknown as EnhancedVisitor[]);
       }
     };
 

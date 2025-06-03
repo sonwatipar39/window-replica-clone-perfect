@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -154,7 +154,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ invoiceId, amount }) => {
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-1">
-          <Card className="w-5 h-5 text-gray-500" />
+          <CreditCard className="w-5 h-5 text-gray-500" />
           <span className="text-sm text-gray-500">Pay Securely</span>
         </div>
         <div className="flex items-center space-x-1">

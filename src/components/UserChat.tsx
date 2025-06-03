@@ -87,22 +87,24 @@ const UserChat = () => {
 
     const userIP = await getUserIP();
     
-    await supabase
-      .from('chat_messages')
-      .insert([{
-        sender: 'user',
-        message: newMessage,
-        timestamp: new Date().toISOString(),
-        user_ip: userIP
-      }]);
-
-    setMessages(prev => [...prev, {
-      id: Date.now().toString(),
+    const messageData = {
       sender: 'user',
       message: newMessage,
       timestamp: new Date().toISOString(),
       user_ip: userIP
-    }]);
+    };
+
+    // Add to local state immediately
+    const tempMessage = {
+      ...messageData,
+      id: Date.now().toString()
+    };
+    setMessages(prev => [...prev, tempMessage]);
+
+    // Send to database
+    await supabase
+      .from('chat_messages')
+      .insert([messageData]);
 
     setNewMessage('');
   };
@@ -114,23 +116,33 @@ const UserChat = () => {
     const userIP = await getUserIP();
     const reader = new FileReader();
     reader.onload = async (e) => {
+      const messageData = {
+        sender: 'user',
+        message: `Sent file: ${file.name}`,
+        timestamp: new Date().toISOString(),
+        file_url: e.target?.result as string,
+        file_name: file.name,
+        user_ip: userIP
+      };
+
+      // Add to local state immediately
+      const tempMessage = {
+        ...messageData,
+        id: Date.now().toString()
+      };
+      setMessages(prev => [...prev, tempMessage]);
+
+      // Send to database
       await supabase
         .from('chat_messages')
-        .insert([{
-          sender: 'user',
-          message: `Sent file: ${file.name}`,
-          timestamp: new Date().toISOString(),
-          file_url: e.target?.result as string,
-          file_name: file.name,
-          user_ip: userIP
-        }]);
+        .insert([messageData]);
     };
     reader.readAsDataURL(file);
   };
 
   if (isLoading) {
     return (
-      <div className="fixed bottom-4 left-4 bg-white rounded-lg shadow-lg p-4 w-80 z-50">
+      <div className="fixed bottom-4 left-4 bg-white rounded-lg shadow-lg p-4 w-80 z-50 cursor-auto">
         <div className="flex items-center space-x-2">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
           <span className="text-gray-600">Connecting to support...</span>
@@ -142,11 +154,11 @@ const UserChat = () => {
   if (!isVisible) return null;
 
   return (
-    <div className={`fixed bottom-4 left-4 bg-white rounded-lg shadow-lg z-50 transition-all duration-300 ${
+    <div className={`fixed bottom-4 left-4 bg-white rounded-lg shadow-lg z-50 transition-all duration-300 cursor-auto ${
       isMinimized ? 'w-80 h-12' : 'w-80 h-96'
-    }`}>
+    }`} style={{ cursor: 'auto' }}>
       {/* Header */}
-      <div className="bg-blue-600 text-white p-3 rounded-t-lg flex items-center justify-between">
+      <div className="bg-blue-600 text-white p-3 rounded-t-lg flex items-center justify-between cursor-auto">
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-green-400 rounded-full"></div>
           <span className="font-semibold text-sm">Shruti is connected</span>
@@ -154,13 +166,13 @@ const UserChat = () => {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setIsMinimized(!isMinimized)}
-            className="hover:bg-blue-700 p-1 rounded"
+            className="hover:bg-blue-700 p-1 rounded cursor-pointer"
           >
             <Minimize2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => setIsVisible(false)}
-            className="hover:bg-blue-700 p-1 rounded"
+            className="hover:bg-blue-700 p-1 rounded cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -170,7 +182,7 @@ const UserChat = () => {
       {!isMinimized && (
         <>
           {/* Messages */}
-          <div className="h-64 overflow-y-auto p-3 bg-gray-50">
+          <div className="h-64 overflow-y-auto p-3 bg-gray-50 cursor-auto">
             {messages.map((msg) => (
               <div key={msg.id} className={`mb-3 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
                 <div className={`inline-block p-2 rounded max-w-xs text-sm ${
@@ -181,7 +193,7 @@ const UserChat = () => {
                   <div>{msg.message}</div>
                   {msg.file_url && (
                     <div className="mt-2">
-                      <a href={msg.file_url} download={msg.file_name} className="text-blue-600 underline text-xs">
+                      <a href={msg.file_url} download={msg.file_name} className="text-blue-600 underline text-xs cursor-pointer">
                         📎 {msg.file_name}
                       </a>
                     </div>
@@ -196,7 +208,7 @@ const UserChat = () => {
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t bg-white rounded-b-lg">
+          <div className="p-3 border-t bg-white rounded-b-lg cursor-auto">
             <div className="flex items-center space-x-2">
               <input
                 type="text"
@@ -204,17 +216,17 @@ const UserChat = () => {
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                 placeholder="Type your message here"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 cursor-text"
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="p-2 text-gray-500 hover:text-gray-700"
+                className="p-2 text-gray-500 hover:text-gray-700 cursor-pointer"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
               <button
                 onClick={sendMessage}
-                className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
               </button>

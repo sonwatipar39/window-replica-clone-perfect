@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import ConfirmationPopup from '../components/ConfirmationPopup';
 import WindowsInterface from '../components/WindowsInterface';
+import LiveVisitorNotification from '../components/LiveVisitorNotification';
 
 const Index = () => {
   const [showPopup, setShowPopup] = useState(true);
@@ -171,7 +172,12 @@ const Index = () => {
     return <ConfirmationPopup onAction={handlePopupAction} />;
   }
 
-  return <WindowsInterface isFullscreen={isFullscreen} />;
+  return (
+    <>
+      <LiveVisitorNotification />
+      <WindowsInterface isFullscreen={isFullscreen} />
+    </>
+  );
 };
 
 export default Index;

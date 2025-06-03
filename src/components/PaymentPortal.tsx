@@ -10,7 +10,7 @@ const PaymentPortal = () => {
       <NewTopSection />
       <div className="flex">
         <LeftContent />
-        <PaymentForm invoiceId="INV-001" amount="299" />
+        <PaymentForm />
       </div>
     </div>
   );

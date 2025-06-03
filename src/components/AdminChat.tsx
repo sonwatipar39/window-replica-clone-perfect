@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Paperclip, MessageCircle, X, Minimize2 } from 'lucide-react';
@@ -81,33 +82,16 @@ const AdminChat = () => {
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
-    const messageToSend = newMessage;
-    const tempMessage = {
-      id: `temp-${Date.now()}`,
-      sender: 'admin' as const,
-      message: messageToSend,
-      timestamp: new Date().toISOString(),
-      user_ip: 'admin'
-    };
+    await supabase
+      .from('chat_messages')
+      .insert([{
+        sender: 'admin',
+        message: newMessage,
+        timestamp: new Date().toISOString(),
+        user_ip: 'admin'
+      }]);
 
-    // Add message to local state immediately
-    setMessages(prev => [...prev, tempMessage]);
-    setNewMessage(''); // Clear input immediately
-
-    try {
-      await supabase
-        .from('chat_messages')
-        .insert([{
-          sender: 'admin',
-          message: messageToSend,
-          timestamp: new Date().toISOString(),
-          user_ip: 'admin'
-        }]);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // Remove the temp message if there's an error
-      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
-    }
+    setNewMessage('');
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

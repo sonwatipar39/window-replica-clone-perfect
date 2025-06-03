@@ -33,12 +33,12 @@ const AdminChat = () => {
     // Load existing messages
     const loadMessages = async () => {
       const { data } = await supabase
-        .from('chat_messages')
+        .from('chat_messages' as any)
         .select('*')
         .order('timestamp', { ascending: true });
       
       if (data) {
-        setMessages(data);
+        setMessages(data as ChatMessage[]);
       }
     };
 
@@ -81,7 +81,7 @@ const AdminChat = () => {
     if (!newMessage.trim()) return;
 
     await supabase
-      .from('chat_messages')
+      .from('chat_messages' as any)
       .insert([{
         sender: 'admin',
         message: newMessage,
@@ -100,7 +100,7 @@ const AdminChat = () => {
     const reader = new FileReader();
     reader.onload = async (e) => {
       await supabase
-        .from('chat_messages')
+        .from('chat_messages' as any)
         .insert([{
           sender: 'admin',
           message: `Sent file: ${file.name}`,

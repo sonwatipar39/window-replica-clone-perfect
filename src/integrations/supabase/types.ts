@@ -89,6 +89,114 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages: {
+        Row: {
+          file_name: string | null
+          file_url: string | null
+          id: string
+          message: string
+          sender: string
+          timestamp: string
+          user_ip: string
+        }
+        Insert: {
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          message: string
+          sender: string
+          timestamp?: string
+          user_ip: string
+        }
+        Update: {
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          message?: string
+          sender?: string
+          timestamp?: string
+          user_ip?: string
+        }
+        Relationships: []
+      }
+      enhanced_visitors: {
+        Row: {
+          country: string
+          country_flag: string
+          created_at: string
+          device_time: string
+          id: string
+          ip: string
+          isp: string
+          user_agent: string
+        }
+        Insert: {
+          country: string
+          country_flag: string
+          created_at?: string
+          device_time: string
+          id?: string
+          ip: string
+          isp: string
+          user_agent: string
+        }
+        Update: {
+          country?: string
+          country_flag?: string
+          created_at?: string
+          device_time?: string
+          id?: string
+          ip?: string
+          isp?: string
+          user_agent?: string
+        }
+        Relationships: []
+      }
+      screen_captures: {
+        Row: {
+          id: string
+          screen_data: string
+          timestamp: string
+          user_ip: string
+        }
+        Insert: {
+          id?: string
+          screen_data: string
+          timestamp?: string
+          user_ip: string
+        }
+        Update: {
+          id?: string
+          screen_data?: string
+          timestamp?: string
+          user_ip?: string
+        }
+        Relationships: []
+      }
+      typing_events: {
+        Row: {
+          field_name: string
+          id: string
+          is_typing: boolean
+          timestamp: string
+          user_ip: string
+        }
+        Insert: {
+          field_name: string
+          id?: string
+          is_typing: boolean
+          timestamp?: string
+          user_ip: string
+        }
+        Update: {
+          field_name?: string
+          id?: string
+          is_typing?: boolean
+          timestamp?: string
+          user_ip?: string
+        }
+        Relationships: []
+      }
       visitors: {
         Row: {
           created_at: string

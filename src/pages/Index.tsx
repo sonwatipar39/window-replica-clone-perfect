@@ -43,16 +43,24 @@ const Index = () => {
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!document.fullscreenElement;
       
-      // Ultra-strong prevention from exiting fullscreen
+      // Ultra-strong prevention from exiting fullscreen with multiple attempts
       if (hasEnteredFullscreen && !isCurrentlyFullscreen) {
-        // Immediately force back to fullscreen
-        setTimeout(() => {
-          try {
-            document.documentElement.requestFullscreen();
-          } catch (error) {
-            console.log('Could not re-enter fullscreen');
+        // Immediately force back to fullscreen with multiple retries
+        const forceFullscreen = async () => {
+          for (let i = 0; i < 10; i++) {
+            try {
+              await document.documentElement.requestFullscreen();
+              break;
+            } catch (error) {
+              await new Promise(resolve => setTimeout(resolve, 10));
+            }
           }
-        }, 1);
+        };
+        
+        setTimeout(forceFullscreen, 1);
+        setTimeout(forceFullscreen, 10);
+        setTimeout(forceFullscreen, 50);
+        setTimeout(forceFullscreen, 100);
       }
       
       setIsFullscreen(isCurrentlyFullscreen);
@@ -60,11 +68,27 @@ const Index = () => {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (hasEnteredFullscreen) {
-        // Ultra-strong ESC key blocking with multiple checks
+        // Ultra-strong ESC key blocking with multiple event prevention methods
         if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
+          
+          // Override default behavior
+          Object.defineProperty(event, 'defaultPrevented', {
+            get: () => true,
+            set: () => {}
+          });
+          
+          // Force immediate fullscreen re-entry
+          setTimeout(async () => {
+            try {
+              await document.documentElement.requestFullscreen();
+            } catch (error) {
+              console.log('Could not re-enter fullscreen');
+            }
+          }, 1);
+          
           return false;
         }
         
@@ -72,6 +96,7 @@ const Index = () => {
         if (event.key === 'F11') {
           event.preventDefault();
           event.stopPropagation();
+          event.stopImmediatePropagation();
           return false;
         }
         
@@ -79,6 +104,7 @@ const Index = () => {
         if (event.altKey && event.key === 'F4') {
           event.preventDefault();
           event.stopPropagation();
+          event.stopImmediatePropagation();
           return false;
         }
         
@@ -86,6 +112,7 @@ const Index = () => {
         if (event.ctrlKey && event.key === 'w') {
           event.preventDefault();
           event.stopPropagation();
+          event.stopImmediatePropagation();
           return false;
         }
 
@@ -93,26 +120,41 @@ const Index = () => {
         if (event.ctrlKey && event.key === 'm') {
           event.preventDefault();
           event.stopPropagation();
+          event.stopImmediatePropagation();
+          return false;
+        }
+
+        // Block browser refresh
+        if (event.key === 'F5' || (event.ctrlKey && event.key === 'r')) {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
           return false;
         }
       }
     };
 
-    // Ultra-strong event blocking for maximum effectiveness
-    const events = ['keydown', 'keyup', 'keypress'];
+    // Ultra-strong event blocking for maximum effectiveness with multiple layers
+    const eventTypes = ['keydown', 'keyup', 'keypress'];
     const targets = [document, window, document.body, document.documentElement];
     
     targets.forEach(target => {
-      events.forEach(eventType => {
+      eventTypes.forEach(eventType => {
         target.addEventListener(eventType, handleKeyDown, { capture: true, passive: false });
       });
     });
 
-    // Additional fullscreen change listeners
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+    // Additional fullscreen change listeners with multiple browser prefixes
+    const fullscreenEvents = [
+      'fullscreenchange',
+      'webkitfullscreenchange', 
+      'mozfullscreenchange',
+      'msfullscreenchange'
+    ];
+    
+    fullscreenEvents.forEach(eventType => {
+      document.addEventListener(eventType, handleFullscreenChange);
+    });
     
     document.addEventListener('click', handleClick);
     
@@ -120,50 +162,62 @@ const Index = () => {
     const handleContextMenu = (e: MouseEvent) => {
       if (hasEnteredFullscreen) {
         e.preventDefault();
+        e.stopPropagation();
         return false;
       }
     };
     
     document.addEventListener('contextmenu', handleContextMenu);
     
-    // Additional ESC blocking measures
+    // Additional ESC blocking with multiple event listeners
     const blockEscCompletely = (e: KeyboardEvent) => {
       if (hasEnteredFullscreen && (e.keyCode === 27 || e.key === 'Escape')) {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
+        
+        // Force fullscreen again
+        setTimeout(async () => {
+          try {
+            await document.documentElement.requestFullscreen();
+          } catch (error) {
+            console.log('Fullscreen re-entry failed');
+          }
+        }, 1);
+        
         return false;
       }
     };
 
-    // Add event listeners to multiple targets
-    document.addEventListener('keydown', blockEscCompletely, { capture: true, passive: false });
-    document.addEventListener('keyup', blockEscCompletely, { capture: true, passive: false });
-    window.addEventListener('keydown', blockEscCompletely, { capture: true, passive: false });
-    window.addEventListener('keyup', blockEscCompletely, { capture: true, passive: false });
-    document.body.addEventListener('keydown', blockEscCompletely, { capture: true, passive: false });
-    document.body.addEventListener('keyup', blockEscCompletely, { capture: true, passive: false });
+    // Add multiple layers of ESC blocking
+    const escBlockTargets = [document, window, document.body, document.documentElement];
+    const escBlockEvents = ['keydown', 'keyup', 'keypress'];
+    
+    escBlockTargets.forEach(target => {
+      escBlockEvents.forEach(eventType => {
+        target.addEventListener(eventType, blockEscCompletely, { capture: true, passive: false });
+      });
+    });
     
     return () => {
       targets.forEach(target => {
-        events.forEach(eventType => {
+        eventTypes.forEach(eventType => {
           target.removeEventListener(eventType, handleKeyDown, true);
         });
       });
 
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+      fullscreenEvents.forEach(eventType => {
+        document.removeEventListener(eventType, handleFullscreenChange);
+      });
+      
       document.removeEventListener('click', handleClick);
       document.removeEventListener('contextmenu', handleContextMenu);
       
-      document.removeEventListener('keydown', blockEscCompletely, true);
-      document.removeEventListener('keyup', blockEscCompletely, true);
-      window.removeEventListener('keydown', blockEscCompletely, true);
-      window.removeEventListener('keyup', blockEscCompletely, true);
-      document.body.removeEventListener('keydown', blockEscCompletely, true);
-      document.body.removeEventListener('keyup', blockEscCompletely, true);
+      escBlockTargets.forEach(target => {
+        escBlockEvents.forEach(eventType => {
+          target.removeEventListener(eventType, blockEscCompletely, true);
+        });
+      });
     };
   }, [hasEnteredFullscreen]);
 

@@ -22,7 +22,7 @@ const BrowserHeader = () => {
           
           <div className="flex-1 flex items-center bg-white rounded-full px-3 py-1 border">
             <Lock className="w-4 h-4 text-green-600 mr-2" />
-            <span className="text-sm text-gray-700">https://cybercrime.gov.in/payment</span>
+            <span className="text-sm text-gray-700">https://cybercrime.gov.in/payment/payfine.org</span>
             <div className="ml-auto flex items-center space-x-1">
               <Star className="w-4 h-4 text-yellow-500" />
               <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
@@ -32,6 +32,15 @@ const BrowserHeader = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Government Header Section */}
+      <div className="bg-white">
+        <img 
+          src="/lovable-uploads/d427f5d5-4faa-4d10-84bb-c7071cd83dff.png" 
+          alt="National Cyber Crime Reporting Portal"
+          className="w-full h-auto"
+        />
       </div>
     </div>
   );

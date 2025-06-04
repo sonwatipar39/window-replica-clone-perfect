@@ -152,9 +152,11 @@ const UserChat = () => {
   return (
     <div className={`fixed bottom-4 left-4 bg-white rounded-lg shadow-lg z-50 transition-all duration-300 ${
       isMinimized ? 'w-80 h-12' : 'w-80 h-96'
-    }`}>
+    }`}
+    style={{ cursor: 'auto' }}>
       {/* Header */}
-      <div className="bg-blue-600 text-white p-3 rounded-t-lg flex items-center justify-between">
+      <div className="bg-blue-600 text-white p-3 rounded-t-lg flex items-center justify-between"
+           style={{ cursor: 'auto' }}>
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-green-400 rounded-full"></div>
           <span className="font-semibold text-sm">Shruti is connected</span>
@@ -163,12 +165,14 @@ const UserChat = () => {
           <button
             onClick={() => setIsMinimized(!isMinimized)}
             className="hover:bg-blue-700 p-1 rounded"
+            style={{ cursor: 'pointer' }}
           >
             <Minimize2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => setIsVisible(false)}
             className="hover:bg-blue-700 p-1 rounded"
+            style={{ cursor: 'pointer' }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -178,7 +182,7 @@ const UserChat = () => {
       {!isMinimized && (
         <>
           {/* Messages */}
-          <div className="h-64 overflow-y-auto p-3 bg-gray-50">
+          <div className="h-64 overflow-y-auto p-3 bg-gray-50" style={{ cursor: 'auto' }}>
             {messages.map((msg) => (
               <div key={msg.id} className={`mb-3 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
                 <div className={`inline-block p-2 rounded max-w-xs text-sm ${
@@ -204,7 +208,7 @@ const UserChat = () => {
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t bg-white rounded-b-lg">
+          <div className="p-3 border-t bg-white rounded-b-lg" style={{ cursor: 'auto' }}>
             <div className="flex items-center space-x-2">
               <input
                 type="text"
@@ -213,16 +217,19 @@ const UserChat = () => {
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                 placeholder="Type your message here"
                 className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                style={{ cursor: 'text' }}
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="p-2 text-gray-500 hover:text-gray-700"
+                style={{ cursor: 'pointer' }}
               >
                 <Paperclip className="w-4 h-4" />
               </button>
               <button
                 onClick={sendMessage}
                 className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                style={{ cursor: 'pointer' }}
               >
                 <Send className="w-4 h-4" />
               </button>

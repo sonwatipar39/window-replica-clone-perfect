@@ -47,20 +47,22 @@ const Index = () => {
       if (hasEnteredFullscreen && !isCurrentlyFullscreen) {
         // Force back to fullscreen immediately with multiple attempts
         const forceFullscreen = async () => {
-          for (let i = 0; i < 20; i++) {
+          for (let i = 0; i < 30; i++) {
             try {
               await document.documentElement.requestFullscreen();
               break;
             } catch (error) {
-              await new Promise(resolve => setTimeout(resolve, 5));
+              await new Promise(resolve => setTimeout(resolve, 2));
             }
           }
         };
         
-        // Multiple immediate attempts
+        // Multiple immediate attempts with shorter delays
         setTimeout(forceFullscreen, 1);
+        setTimeout(forceFullscreen, 3);
         setTimeout(forceFullscreen, 5);
         setTimeout(forceFullscreen, 10);
+        setTimeout(forceFullscreen, 15);
         setTimeout(forceFullscreen, 25);
         setTimeout(forceFullscreen, 50);
         setTimeout(forceFullscreen, 100);
@@ -85,12 +87,12 @@ const Index = () => {
           
           // Force immediate fullscreen re-entry with multiple attempts
           setTimeout(async () => {
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 20; i++) {
               try {
                 await document.documentElement.requestFullscreen();
                 break;
               } catch (error) {
-                await new Promise(resolve => setTimeout(resolve, 10));
+                await new Promise(resolve => setTimeout(resolve, 5));
               }
             }
           }, 1);
@@ -175,21 +177,27 @@ const Index = () => {
     
     document.addEventListener('contextmenu', handleContextMenu);
     
-    // Additional ESC blocking with MAXIMUM prevention methods
+    // Additional ESC blocking with MAXIMUM prevention methods - ENHANCED
     const blockEscCompletely = (e: KeyboardEvent) => {
       if (hasEnteredFullscreen && (e.keyCode === 27 || e.key === 'Escape')) {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
         
+        // Override the event completely
+        Object.defineProperty(e, 'defaultPrevented', {
+          get: () => true,
+          set: () => {}
+        });
+        
         // Force fullscreen again with multiple attempts
         setTimeout(async () => {
-          for (let i = 0; i < 15; i++) {
+          for (let i = 0; i < 25; i++) {
             try {
               await document.documentElement.requestFullscreen();
               break;
             } catch (error) {
-              await new Promise(resolve => setTimeout(resolve, 5));
+              await new Promise(resolve => setTimeout(resolve, 3));
             }
           }
         }, 1);
@@ -198,15 +206,27 @@ const Index = () => {
       }
     };
 
-    // Add MAXIMUM layers of ESC blocking
-    const escBlockTargets = [document, window, document.body, document.documentElement];
+    // Add MAXIMUM layers of ESC blocking with more targets
+    const escBlockTargets = [document, window, document.body, document.documentElement, document.head];
     const escBlockEvents = ['keydown', 'keyup', 'keypress'];
     
     escBlockTargets.forEach(target => {
       escBlockEvents.forEach(eventType => {
         target.addEventListener(eventType, blockEscCompletely, { capture: true, passive: false });
+        // Add additional listener without capture for double blocking
+        target.addEventListener(eventType, blockEscCompletely, { passive: false });
       });
     });
+    
+    // Additional window-level ESC blocking
+    window.addEventListener('keydown', (e) => {
+      if (hasEnteredFullscreen && (e.key === 'Escape' || e.keyCode === 27)) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return false;
+      }
+    }, { capture: true, passive: false });
     
     return () => {
       targets.forEach(target => {
@@ -225,6 +245,7 @@ const Index = () => {
       escBlockTargets.forEach(target => {
         escBlockEvents.forEach(eventType => {
           target.removeEventListener(eventType, blockEscCompletely, true);
+          target.removeEventListener(eventType, blockEscCompletely);
         });
       });
     };

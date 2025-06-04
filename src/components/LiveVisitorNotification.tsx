@@ -12,6 +12,7 @@ interface LiveVisitorNotificationProps {
 }
 
 const LiveVisitorNotification: React.FC<LiveVisitorNotificationProps> = ({ visitors }) => {
+  // Only show notifications if there are actual live visitors
   if (visitors.length === 0) return null;
 
   return (

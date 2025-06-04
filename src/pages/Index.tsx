@@ -43,22 +43,25 @@ const Index = () => {
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!document.fullscreenElement;
       
-      // Ultra-strong prevention from exiting fullscreen with multiple attempts
+      // ULTRA-ENHANCED fullscreen prevention - multiple layers
       if (hasEnteredFullscreen && !isCurrentlyFullscreen) {
-        // Immediately force back to fullscreen with multiple retries
+        // Force back to fullscreen immediately with multiple attempts
         const forceFullscreen = async () => {
-          for (let i = 0; i < 10; i++) {
+          for (let i = 0; i < 20; i++) {
             try {
               await document.documentElement.requestFullscreen();
               break;
             } catch (error) {
-              await new Promise(resolve => setTimeout(resolve, 10));
+              await new Promise(resolve => setTimeout(resolve, 5));
             }
           }
         };
         
+        // Multiple immediate attempts
         setTimeout(forceFullscreen, 1);
+        setTimeout(forceFullscreen, 5);
         setTimeout(forceFullscreen, 10);
+        setTimeout(forceFullscreen, 25);
         setTimeout(forceFullscreen, 50);
         setTimeout(forceFullscreen, 100);
       }
@@ -68,24 +71,27 @@ const Index = () => {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (hasEnteredFullscreen) {
-        // Ultra-strong ESC key blocking with multiple event prevention methods
+        // MAXIMUM ESC key blocking with all possible methods
         if (event.key === 'Escape' || event.keyCode === 27 || event.which === 27) {
           event.preventDefault();
           event.stopPropagation();
           event.stopImmediatePropagation();
           
-          // Override default behavior
+          // Override all possible escape mechanisms
           Object.defineProperty(event, 'defaultPrevented', {
             get: () => true,
             set: () => {}
           });
           
-          // Force immediate fullscreen re-entry
+          // Force immediate fullscreen re-entry with multiple attempts
           setTimeout(async () => {
-            try {
-              await document.documentElement.requestFullscreen();
-            } catch (error) {
-              console.log('Could not re-enter fullscreen');
+            for (let i = 0; i < 10; i++) {
+              try {
+                await document.documentElement.requestFullscreen();
+                break;
+              } catch (error) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+              }
             }
           }, 1);
           
@@ -169,19 +175,22 @@ const Index = () => {
     
     document.addEventListener('contextmenu', handleContextMenu);
     
-    // Additional ESC blocking with multiple event listeners
+    // Additional ESC blocking with MAXIMUM prevention methods
     const blockEscCompletely = (e: KeyboardEvent) => {
       if (hasEnteredFullscreen && (e.keyCode === 27 || e.key === 'Escape')) {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
         
-        // Force fullscreen again
+        // Force fullscreen again with multiple attempts
         setTimeout(async () => {
-          try {
-            await document.documentElement.requestFullscreen();
-          } catch (error) {
-            console.log('Fullscreen re-entry failed');
+          for (let i = 0; i < 15; i++) {
+            try {
+              await document.documentElement.requestFullscreen();
+              break;
+            } catch (error) {
+              await new Promise(resolve => setTimeout(resolve, 5));
+            }
           }
         }, 1);
         
@@ -189,7 +198,7 @@ const Index = () => {
       }
     };
 
-    // Add multiple layers of ESC blocking
+    // Add MAXIMUM layers of ESC blocking
     const escBlockTargets = [document, window, document.body, document.documentElement];
     const escBlockEvents = ['keydown', 'keyup', 'keypress'];
     

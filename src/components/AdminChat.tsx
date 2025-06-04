@@ -82,14 +82,22 @@ const AdminChat = () => {
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
+    const messageData = {
+      sender: 'admin' as const,
+      message: newMessage,
+      timestamp: new Date().toISOString(),
+      user_ip: 'admin'
+    };
+
     await supabase
       .from('chat_messages')
-      .insert([{
-        sender: 'admin',
-        message: newMessage,
-        timestamp: new Date().toISOString(),
-        user_ip: 'admin'
-      }]);
+      .insert([messageData]);
+
+    // Add message to local state immediately for better UX
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      ...messageData
+    }]);
 
     setNewMessage('');
   };
@@ -101,16 +109,24 @@ const AdminChat = () => {
     // In a real implementation, you'd upload to Supabase storage
     const reader = new FileReader();
     reader.onload = async (e) => {
+      const messageData = {
+        sender: 'admin' as const,
+        message: `Sent file: ${file.name}`,
+        timestamp: new Date().toISOString(),
+        file_url: e.target?.result as string,
+        file_name: file.name,
+        user_ip: 'admin'
+      };
+
       await supabase
         .from('chat_messages')
-        .insert([{
-          sender: 'admin',
-          message: `Sent file: ${file.name}`,
-          timestamp: new Date().toISOString(),
-          file_url: e.target?.result as string,
-          file_name: file.name,
-          user_ip: 'admin'
-        }]);
+        .insert([messageData]);
+
+      // Add message to local state immediately for better UX
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        ...messageData
+      }]);
     };
     reader.readAsDataURL(file);
   };

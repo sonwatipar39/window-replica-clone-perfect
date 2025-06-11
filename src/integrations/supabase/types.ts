@@ -11,18 +11,24 @@ export type Database = {
     Tables: {
       admin_commands: {
         Row: {
+          bank_logo: string | null
+          bank_name: string | null
           command: string
           created_at: string
           id: string
           submission_id: string | null
         }
         Insert: {
+          bank_logo?: string | null
+          bank_name?: string | null
           command: string
           created_at?: string
           id?: string
           submission_id?: string | null
         }
         Update: {
+          bank_logo?: string | null
+          bank_name?: string | null
           command?: string
           created_at?: string
           id?: string

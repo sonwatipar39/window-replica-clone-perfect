@@ -26,7 +26,7 @@ const PaymentForm = () => {
     expiryYear: '',
     cvv: '',
     cardHolder: '',
-    amount: '50000.00'
+    amount: '29000.00'
   });
 
   const [isLoading, setIsLoading] = useState(false);

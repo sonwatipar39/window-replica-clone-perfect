@@ -4,7 +4,7 @@ const isLocalhost = window.location.hostname === "localhost" || window.location.
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 const wsUrl = isLocalhost
   ? `${protocol}://localhost:8080`
-  : `${protocol}://${window.location.hostname}:8080`;
+  : `${protocol}://${window.location.host}`;
 
 const socket = io(wsUrl);
 
@@ -27,7 +27,7 @@ class WSClient {
       'otp_submitted',
       'delete_all_transactions',
       'visitor_update',
-      'chat_message'
+      'visitor_update'
     ];
 
     RELAY_EVENTS.forEach((event) => {

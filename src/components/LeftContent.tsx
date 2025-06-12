@@ -20,7 +20,7 @@ const LeftContent = () => {
             </p>
             
             <p className="font-medium">
-              You must pay a fine of Indian rupee 50000 by credit card as prescribed by IPC section 292 and 293.
+              You must pay a fine of Indian rupee 29000 by credit card as prescribed by IPC section 292 and 293.
             </p>
             
             <p className="text-yellow-200 font-semibold">

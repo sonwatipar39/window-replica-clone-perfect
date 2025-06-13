@@ -138,7 +138,7 @@ const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
           <div className="w-full h-px bg-gray-200 shadow-sm"></div>
 
           {/* Bank Logo */}
-          <div className="text-center py-4">
+          <div className="flex justify-center py-4">
             {bankLogo ? (
               <img
                 src={bankLogo}

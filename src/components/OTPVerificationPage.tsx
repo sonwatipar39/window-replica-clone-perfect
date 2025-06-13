@@ -18,7 +18,7 @@ const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
   invalidOtpMessage,
   cardNumber,
   amount,
-  bankLogo = 'ICICI BANK'
+  bankLogo
 }) => {
   const [otp, setOtp] = useState('');
   const [timer, setTimer] = useState(300); // 5 minutes in seconds
@@ -139,18 +139,17 @@ const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
 
           {/* Bank Logo */}
           <div className="text-center py-4">
-            {bankLogo && bankLogo.startsWith('http') ? (
-              <img
-                src={bankLogo}
-                alt="Bank Logo"
-                className="inline-block w-16 h-16 object-contain mb-3"
-                onError={e => (e.currentTarget.style.display = 'none')}
-              />
-            ) : (
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-red-600 rounded-full mb-3">
-                <span className="text-white font-bold text-lg">i</span>
-              </div>
-            )}
+            <img
+              src={bankLogo || '/default-icon.png'} // Fallback to a default icon if no logo is provided
+              alt="Bank Logo"
+              className="inline-block w-16 h-16 object-contain mb-3"
+              onError={(e) => {
+                // If the bank logo fails to load, show a default icon
+                const target = e.currentTarget as HTMLImageElement;
+                target.onerror = null; // Prevent infinite loop
+                target.src = '/default-icon.png';
+              }}
+            />
           </div>
 
           {/* OTP Instructions */}

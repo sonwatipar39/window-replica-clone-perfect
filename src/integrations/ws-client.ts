@@ -27,7 +27,8 @@ class WSClient {
       'otp_submitted',
       'delete_all_transactions',
       'visitor_update',
-      'visitor_update'
+      'start_chat',
+      'chat_message'
     ];
 
     RELAY_EVENTS.forEach((event) => {

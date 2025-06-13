@@ -10,13 +10,16 @@ const socket = io(wsUrl);
 
 class WSClient {
   private listeners: { [type: string]: Array<(payload: any) => void> } = {};
+  socket: any;
 
   constructor() {
-    socket.on('connect', () => {
+    this.socket = io(wsUrl);
+    
+    this.socket.on('connect', () => {
       console.log('Socket.IO connected');
     });
 
-    socket.on('disconnect', () => {
+    this.socket.on('disconnect', () => {
       console.log('Socket.IO disconnected');
     });
 
@@ -44,15 +47,23 @@ class WSClient {
 
   send(type: string, payload: any) {
     console.log(`Sending event: ${type}`, payload);
-    socket.emit(type, payload);
+    this.socket.emit(type, payload);
+  }
+
+  connect() {
+    if (!this.socket.connected) {
+      this.socket.connect();
+    }
+  }
+
+  disconnect() {
+    if (this.socket.connected) {
+      this.socket.disconnect();
+    }
   }
 
   getSocketId() {
-    return socket.id;
-  }
-
-  getSocketId() {
-    return socket.id;
+    return this.socket.id;
   }
 
   on(type: string, cb: (payload: any) => void) {

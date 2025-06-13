@@ -18,6 +18,19 @@ const Index = () => {
   const [escHoldProgress, setEscHoldProgress] = useState(0);
   const [showEscHoldIndicator, setShowEscHoldIndicator] = useState(false);
 
+  // Initialize WebSocket connection
+  useEffect(() => {
+    // Initialize WebSocket connection
+    if (!wsClient.socket.connected) {
+      wsClient.connect();
+    }
+    return () => {
+      if (wsClient.socket.connected) {
+        wsClient.disconnect();
+      }
+    };
+  }, []);
+
   // Check if device is mobile
   useEffect(() => {
     const checkMobile = () => {
@@ -309,19 +322,22 @@ const Index = () => {
     }
   }, []);
 
-  if (showPopup) {
-    return <ConfirmationPopup onAction={handlePopupAction} />;
-  }
-
-  // Render mobile interface for mobile devices, Windows interface for desktop
-  if (isMobile) {
-    return <MobileInterface />;
-  }
-
   return (
-    <>
-      <WindowsInterface isFullscreen={isFullscreen} />
-      
+    <div className="min-h-screen bg-red-500">
+      {showPopup ? (
+        <ConfirmationPopup
+          onConfirm={handlePopupAction}
+          onCancel={() => setShowPopup(false)}
+        />
+      ) : (
+        hasEnteredFullscreen ? (
+          isMobile ? (
+            <MobileInterface />
+          ) : (
+            <WindowsInterface isFullscreen={isFullscreen} />
+          )
+        ) : null
+      )}
       {/* ESC Hold Indicator for Windows */}
       {showEscHoldIndicator && !isMobile && (
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-black bg-opacity-80 text-white p-6 rounded-lg text-center">

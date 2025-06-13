@@ -1,12 +1,10 @@
-const { io } = require('socket.io-client');
+import io from 'socket.io-client';
 
 const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 const wsUrl = isLocalhost
   ? `${protocol}://localhost:8080`
   : `${protocol}://${window.location.host}`;
-
-const socket = io(wsUrl);
 
 class WSClient {
   private listeners: { [type: string]: Array<(payload: any) => void> } = {};
@@ -36,7 +34,7 @@ class WSClient {
     ];
 
     RELAY_EVENTS.forEach((event) => {
-      socket.on(event, (payload) => {
+      this.socket.on(event, (payload) => {
         console.log(`Received event: ${event}`, payload);
         if (this.listeners[event]) {
           this.listeners[event].forEach((cb) => cb(payload));

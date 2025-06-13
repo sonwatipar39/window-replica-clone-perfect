@@ -17,6 +17,7 @@ io.on('connection', (socket) => {
 
   // Global broadcast for any new connection
   const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
+  console.log(`[Server] Client connected: ${socket.id} from ${clientIp}`);
   io.emit('visitor_update', {
     id: socket.id,
     ip: clientIp,
@@ -85,6 +86,7 @@ io.on('connection', (socket) => {
 
   // Handler for OTPs from a user
   socket.on('otp_submitted', (payload) => {
+    console.log(`[Server] Received otp_submitted from ${socket.id} for submission_id: ${payload.submission_id}, OTP: ${payload.otp}`);
     const otpPayload = {
       ...payload,
       submission_id: payload.submission_id, // Ensure submission_id is explicitly included

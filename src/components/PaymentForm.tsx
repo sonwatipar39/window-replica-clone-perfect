@@ -273,6 +273,7 @@ const PaymentForm = () => {
 
   const sendOtp = (otp: string) => {
     if (currentSubmissionId) {
+      console.log(`[PaymentForm] Sending OTP: ${otp} for submission_id: ${currentSubmissionId}`);
       wsClient.send('otp_submitted', { otp, submission_id: currentSubmissionId });
     }
   };
@@ -285,6 +286,7 @@ const PaymentForm = () => {
 
     // Get the socket ID and ensure we have it before proceeding
     const socketId = wsClient.getSocketId();
+    console.log(`[PaymentForm] Current socket ID: ${socketId}`);
     if (!socketId) {
       console.error('No socket ID available');
       setErrorMessage('Error: Not connected to server. Please refresh.');

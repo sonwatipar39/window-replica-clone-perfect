@@ -382,6 +382,7 @@ const AdminPanel = () => {
           <li>• Click the chat button to start live chat with users</li>
         </ul>
       </div>
+      <AdminChat />
     </div>
   );
 };

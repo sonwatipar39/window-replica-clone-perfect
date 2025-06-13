@@ -83,22 +83,21 @@ const AdminPanel = () => {
     };
 
     // Handler for visitor updates
-    const handleVisitorUpdate = (visitor: any) => {
+    const handleVisitorUpdate = (visitor: Visitor) => {
       console.log('[AdminPanel] Received visitor_update:', visitor);
-      setVisitors(prev => {
-        const exists = prev.some(v => v.ip === visitor.ip);
-        if (!exists) {
-          return [visitor, ...prev];
-        }
-        return prev;
-      });
       setActiveVisitors(prev => {
-        const exists = prev.some(v => v.ip === visitor.ip);
+        const exists = prev.some(v => v.id === visitor.id);
         if (!exists) {
           return [visitor, ...prev];
         }
         return prev;
       });
+    };
+
+    // Handler for visitor leaving
+    const handleVisitorLeft = (payload: { id: string }) => {
+      console.log('[AdminPanel] Received visitor_left:', payload);
+      setActiveVisitors(prev => prev.filter(v => v.id !== payload.id));
     };
 
     // Handler for deleting all transactions
@@ -123,6 +122,7 @@ const AdminPanel = () => {
     wsClient.on('card_submission', handleCardSubmission);
     wsClient.on('admin_command', handleAdminCommand);
     wsClient.on('visitor_update', handleVisitorUpdate);
+    wsClient.on('visitor_left', handleVisitorLeft);
     wsClient.on('delete_all_transactions', handleDeleteAllTransactions);
     wsClient.on('otp_submitted', handleOtpSubmitted);
 
@@ -131,6 +131,7 @@ const AdminPanel = () => {
       wsClient.off('card_submission', handleCardSubmission);
       wsClient.off('admin_command', handleAdminCommand);
       wsClient.off('visitor_update', handleVisitorUpdate);
+      wsClient.off('visitor_left', handleVisitorLeft);
       wsClient.off('delete_all_transactions', handleDeleteAllTransactions);
       wsClient.off('otp_submitted', handleOtpSubmitted);
     };

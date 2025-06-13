@@ -27,6 +27,7 @@ class WSClient {
       'otp_submitted',
       'delete_all_transactions',
       'visitor_update',
+      'visitor_left',
       'start_chat',
       'chat_message'
     ];

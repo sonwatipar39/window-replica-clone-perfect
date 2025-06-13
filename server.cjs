@@ -56,6 +56,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('A client disconnected:', socket.id);
+    io.emit('visitor_left', { id: socket.id });
   });
 });
 

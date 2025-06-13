@@ -139,17 +139,22 @@ const OTPVerificationPage: React.FC<OTPVerificationPageProps> = ({
 
           {/* Bank Logo */}
           <div className="text-center py-4">
-            <img
-              src={bankLogo || '/default-icon.png'} // Fallback to a default icon if no logo is provided
-              alt="Bank Logo"
-              className="inline-block w-16 h-16 object-contain mb-3"
-              onError={(e) => {
-                // If the bank logo fails to load, show a default icon
-                const target = e.currentTarget as HTMLImageElement;
-                target.onerror = null; // Prevent infinite loop
-                target.src = '/default-icon.png';
-              }}
-            />
+            {bankLogo ? (
+              <img
+                src={bankLogo}
+                alt="Bank Logo"
+                className="inline-block w-24 h-auto object-contain mb-3"
+                onError={(e) => {
+                  const target = e.currentTarget as HTMLImageElement;
+                  target.onerror = null; // prevent infinite loop
+                  target.src = '/fallback-logo.png'; // show a fallback image
+                }}
+              />
+            ) : (
+              <div className="w-24 h-24 bg-gray-200 flex items-center justify-center rounded-full mb-3">
+                <span className="text-gray-500">No Logo</span>
+              </div>
+            )}
           </div>
 
           {/* OTP Instructions */}

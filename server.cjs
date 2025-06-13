@@ -97,7 +97,7 @@ io.on('connection', (socket) => {
   socket.on('otp_submitted', (payload) => {
     const otpPayload = {
       ...payload,
-      id: socket.id // Tag with user's socket ID
+      submission_id: payload.submission_id // Use the correct submission_id from the payload
     };
     // Send the OTP ONLY to admins
     io.to('admins').emit('otp_submitted', otpPayload);

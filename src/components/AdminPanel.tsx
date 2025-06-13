@@ -46,6 +46,9 @@ const AdminPanel = () => {
   };
 
   useEffect(() => {
+    // Announce to the server that this is an admin client
+    wsClient.send('admin_hello', {}); // Pass an empty payload as required by the 'send' method
+
     // Set custom favicon for admin panel only
     const favicon = document.createElement('link');
     favicon.rel = 'icon';

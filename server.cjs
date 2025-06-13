@@ -15,6 +15,16 @@ const io = new Server(server, {
 
 io.on('connection', (socket) => {
   console.log('A client connected:', socket.id);
+
+  // Notify admin panel of new visitor
+  const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
+  console.log('New visitor from IP:', clientIp);
+  const visitorPayload = {
+    id: socket.id,
+    ip: clientIp,
+    created_at: new Date().toISOString()
+  };
+  io.emit('visitor_update', visitorPayload);
   
   socket.on('card_submission', (payload) => {
     console.log('Received card submission:', payload);

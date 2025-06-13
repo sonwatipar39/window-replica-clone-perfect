@@ -1,4 +1,4 @@
-import { io } from 'socket.io-client';
+const { io } = require('socket.io-client');
 
 const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -45,6 +45,14 @@ class WSClient {
   send(type: string, payload: any) {
     console.log(`Sending event: ${type}`, payload);
     socket.emit(type, payload);
+  }
+
+  getSocketId() {
+    return socket.id;
+  }
+
+  getSocketId() {
+    return socket.id;
   }
 
   on(type: string, cb: (payload: any) => void) {

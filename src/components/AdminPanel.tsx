@@ -72,11 +72,16 @@ const AdminPanel = () => {
 
     const handleVisitorUpdate = (visitor: Visitor) => {
       console.log('[AdminPanel] Received visitor_update:', visitor);
+      // Ignore our own admin connection in visitor list
+      const myId = wsClient.getSocketId();
+      if (visitor.id === myId) return;
       setActiveVisitors(prev => (prev.find(v => v.id === visitor.id) ? prev : [...prev, visitor]));
     };
 
     const handleVisitorLeft = (payload: { id: string }) => {
       console.log('[AdminPanel] Received visitor_left:', payload.id);
+      const myId = wsClient.getSocketId();
+      if (payload.id === myId) return;
       setActiveVisitors(prev => prev.filter(v => v.id !== payload.id));
     };
 

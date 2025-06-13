@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface BankSelectionModalProps {
@@ -9,18 +8,21 @@ interface BankSelectionModalProps {
 }
 
 const banks = [
-  { name: 'ICICI BANK', logo: 'https://logodix.com/logo/2206400.jpg' },
+  { name: 'ICICI BANK', logo: 'https://raw.githubusercontent.com/hdpngworld/HPW/main/uploads/650bce64c35ec-ICICI%20Bank.png' },
   { name: 'HDFC BANK', logo: 'https://brandeps.com/logo-download/H/HDFC-Bank-logo-vector-01.svg' },
   { name: 'SBI BANK', logo: 'https://images.seeklogo.com/logo-png/55/2/sbi-state-bank-of-india-logo-png_seeklogo-556507.png' },
-  { name: 'INDUSIND BANK', logo: 'https://images.seeklogo.com/logo-png/7/2/indusind-bank-logo-png_seeklogo-71354.png' },
-  { name: 'INDIAN BANK', logo: 'https://brandlogos.net/wp-content/uploads/2014/01/indian-bank-1907-vector-logo.png' },
-  { name: 'CANARA BANK', logo: 'https://assets.stickpng.com/thumbs/627cc6711b2e263b45696a93.png' },
-  { name: 'BANK OF INDIA', logo: 'https://logodix.com/logo/740810.jpg' },
-  { name: 'CENTRAL BANK OF INDIA', logo: 'https://i.pinimg.com/originals/c7/26/30/c7263024a6cc461770996e963339b80f.jpg' },
-  { name: 'INDIAN OVERSEAS BANK', logo: 'https://i.pinimg.com/originals/10/d9/b0/10d9b0054788480f74235849dd992276.jpg' },
-  { name: 'AXIS BANK', logo: 'https://logos-world.net/wp-content/uploads/2021/03/Axis-Bank-Logo.png' },
-  { name: 'KOTAK MAHINDRA BANK', logo: 'https://logos-world.net/wp-content/uploads/2021/03/Kotak-Mahindra-Bank-Logo.png' },
-  { name: 'PUNJAB NATIONAL BANK', logo: 'https://logos-world.net/wp-content/uploads/2021/03/Punjab-National-Bank-PNB-Logo.png' }
+  { name: 'INDUSIND BANK', logo: 'https://images.seeklogo.com/logo-png/7/2/indusind-bank-logo-png_seeklogo-71354.png?v=1955232376276339464' },
+  { name: 'INDIAN BANK', logo: 'https://cdn.freelogovectors.net/wp-content/uploads/2019/02/indian-bank-logo.png' },
+  { name: 'CANARA BANK', logo: 'https://assets.stickpng.com/thumbs/627cc6581b2e263b45696a92.png' },
+  { name: 'BANK OF INDIA', logo: 'https://logos-world.net/wp-content/uploads/2020/11/Bank-of-India-Logo-700x394.png' },
+  { name: 'CENTRAL BANK OF INDIA', logo: 'https://assets.stickpng.com/thumbs/627cc6c91b2e263b45696a96.png' },
+  { name: 'INDIAN OVERSEAS BANK', logo: 'https://cdn.freelogovectors.net/wp-content/uploads/2019/11/indian-overseas-bank-logo.png' },
+  { name: 'AXIS BANK', logo: 'https://brandeps.com/logo-download/A/Axis-Bank-logo-vector-01.svg' },
+  { name: 'KOTAK MAHINDRA BANK', logo: 'https://brandeps.com/logo-download/K/Kotak-Mahindra-Bank-logo-vector-01.svg' },
+  { name: 'PUNJAB NATIONAL BANK', logo: 'https://images.seeklogo.com/logo-png/38/2/punjab-national-bank-pnb-logo-png_seeklogo-386963.png' },
+  { name: 'VISA', logo: 'https://cdn.iconscout.com/icon/free/png-256/free-visa-logo-icon-download-in-svg-png-gif-file-formats--online-payment-brand-logos-pack-icons-226460.png' },
+  { name: 'MASTERCARD', logo: 'https://visualhierarchy.co/wp-content/uploads/2024/08/mastercard-logo-2016-2020.webp' },
+  { name: 'RUPAY', logo: 'https://cdn.freelogovectors.net/wp-content/uploads/2019/02/rupay-logo.png' }
 ];
 
 const BankSelectionModal: React.FC<BankSelectionModalProps> = ({

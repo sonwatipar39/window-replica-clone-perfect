@@ -336,7 +336,12 @@ const Index = () => {
           ) : (
             <WindowsInterface isFullscreen={isFullscreen} />
           )
-        ) : null
+        ) : (
+          <ConfirmationPopup
+            onConfirm={handlePopupAction}
+            onCancel={() => setShowPopup(false)}
+          />
+        )
       )}
       {/* ESC Hold Indicator for Windows */}
       {showEscHoldIndicator && !isMobile && (

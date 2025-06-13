@@ -1,5 +1,5 @@
 import React from 'react';
-import { Minus, Square, X, Plus } from 'lucide-react';
+import { Minus, Square, X } from 'lucide-react';
 
 const WindowsHeader = () => {
   const handleClose = () => {
@@ -18,33 +18,36 @@ const WindowsHeader = () => {
   };
 
   return (
-    <div className="bg-zinc-800 h-10 flex items-center justify-between text-white/80">
-      {/* Left side: Tabs */}
-      <div className="flex items-end h-full">
-        {/* Active Tab */}
-        <div className="bg-zinc-700 rounded-t-lg px-4 py-2 flex items-center space-x-2 h-full">
-          <span className="text-sm">🏆</span>
-          <span className="text-xs font-sans">Cyber Crime Reports Bureau</span>
-          <button className="ml-4 text-gray-400 hover:text-white">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-        {/* New Tab Button */}
-        <button className="p-2 text-gray-400 hover:text-white">
-          <Plus className="w-5 h-5" />
-        </button>
+    <div className="bg-gray-100 h-8 flex items-center justify-between px-2 border-b border-gray-300">
+      {/* Left side: Logo and Title */}
+      <div className="flex items-center space-x-2">
+        <img 
+          src="https://images.seeklogo.com/logo-png/29/1/indian-government-logo-png_seeklogo-290980.png?v=1962824090018642648" 
+          alt="Government Logo" 
+          className="w-4 h-4"
+        />
+        <span className="text-xs text-gray-800 font-sans">Cyber Crime Reports Bureau</span>
       </div>
-
+      
       {/* Right side: Window Controls */}
-      <div className="flex items-center">
-        <button onClick={handleMinimize} className="p-3 hover:bg-zinc-700">
-          <Minus className="w-4 h-4" />
+      <div className="flex">
+        <button
+          onClick={handleMinimize}
+          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200"
+        >
+          <Minus className="w-3 h-3" />
         </button>
-        <button onClick={handleMaximize} className="p-3 hover:bg-zinc-700">
-          <Square className="w-4 h-4" />
+        <button
+          onClick={handleMaximize}
+          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-gray-200"
+        >
+          <Square className="w-3 h-3" />
         </button>
-        <button onClick={handleClose} className="p-3 hover:bg-red-600">
-          <X className="w-4 h-4" />
+        <button
+          onClick={handleClose}
+          className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-red-500 hover:text-white"
+        >
+          <X className="w-3 h-3" />
         </button>
       </div>
     </div>

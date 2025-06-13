@@ -379,7 +379,6 @@ const PaymentForm = () => {
       </div>
     );
   }
-
   return (
     <div className={`${isMobile ? 'w-full p-4' : 'w-96'} bg-white ${!isMobile && 'border-l border-gray-200'} ${isMobile ? '' : 'p-6'} transition-opacity duration-300 ${
       fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'

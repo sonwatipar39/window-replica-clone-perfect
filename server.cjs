@@ -8,14 +8,15 @@ const cors = require('cors');
 const app = express();
 app.use(cors({
   origin: 'https://strupnay.me',
-  methods: ['GET', 'POST']
+  credentials: true
 }));
 const port = process.env.PORT || 8080;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: 'https://strupnay.me',
-    methods: ['GET', 'POST']
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 

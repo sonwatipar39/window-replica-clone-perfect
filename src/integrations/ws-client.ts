@@ -11,7 +11,7 @@ class WSClient {
   socket: any;
 
   constructor() {
-    this.socket = io(wsUrl, { path: '/socket.io/' });
+    this.socket = io(wsUrl, { path: '/socket.io/', withCredentials: true, transports: ['websocket', 'polling'] } as any);
     
     this.socket.on('connect', () => {
       console.log('Socket.IO connected');

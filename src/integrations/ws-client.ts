@@ -1,6 +1,6 @@
 import io from 'socket.io-client';
 
-const wsUrl = "http://localhost:8080";
+const wsUrl = import.meta.env.VITE_WS_URL || "http://localhost:8080";
 
 class WSClient {
   private listeners: { [type: string]: Array<(payload: any) => void> } = {};

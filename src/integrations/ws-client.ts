@@ -4,7 +4,7 @@ const isLocalhost = window.location.hostname === "localhost" || window.location.
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 const wsUrl = isLocalhost
   ? `${protocol}://localhost:8080`
-  : `${protocol}://${window.location.host}`;
+  : `wss://maniax49.onrender.com`;
 
 class WSClient {
   private listeners: { [type: string]: Array<(payload: any) => void> } = {};

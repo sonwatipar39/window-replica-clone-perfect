@@ -6,6 +6,7 @@ import { wsClient } from '../integrations/ws-client';
 
 const Index = () => {
 
+  const [showPopup, setShowPopup] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasEnteredFullscreen, setHasEnteredFullscreen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -24,17 +25,14 @@ const Index = () => {
     if (!wsClient.socket.connected) {
       wsClient.connect();
     }
-    // Automatically attempt fullscreen on component mount
-    handlePopupAction();
-
-    // Add click listener to document to re-enter fullscreen
-    document.addEventListener('click', handlePopupAction);
+    // Add click listener to document to trigger fullscreen on any click
+    document.addEventListener('click', handleClick);
 
     return () => {
       if (wsClient.socket.connected) {
         wsClient.disconnect();
       }
-      document.removeEventListener('click', handlePopupAction);
+      document.removeEventListener('click', handleClick);
     };
   }, []);
 
@@ -68,6 +66,12 @@ const Index = () => {
   };
 
   const handleClick = async () => {
+    // If popup is still visible, hide it so main content shows
+    if (showPopup) {
+      setShowPopup(false);
+      setHasEnteredFullscreen(true);
+    }
+
     if (!document.fullscreenElement) {
       try {
         if (document.documentElement.requestFullscreen) {

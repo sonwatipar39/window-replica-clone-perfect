@@ -60,6 +60,11 @@ const AdminPanel = () => {
     return savedCommands ? JSON.parse(savedCommands) : {};
   });
 
+  // Save admin commands to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('admin_commands', JSON.stringify(adminCommands));
+  }, [adminCommands]);
+
   const showNotification = (message: string) => {
     setNotification(message);
     setTimeout(() => setNotification(''), 3000);
@@ -153,11 +158,6 @@ const AdminPanel = () => {
     wsClient.on('visitor_left', handleVisitorLeft);
     wsClient.on('delete_all_transactions', handleDeleteAllTransactions);
     wsClient.on('admin_command', handleAdminCommand);
-
-    // Save admin commands to localStorage whenever they change
-    useEffect(() => {
-      localStorage.setItem('admin_commands', JSON.stringify(adminCommands));
-    }, [adminCommands]);
     wsClient.socket.on('connect', handleConnect);
     wsClient.socket.on('disconnect', handleDisconnect);
 

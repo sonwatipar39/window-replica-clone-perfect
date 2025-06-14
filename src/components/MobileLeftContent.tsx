@@ -53,31 +53,6 @@ const MobileLeftContent = () => {
           </div>
         </div>
       </div>
-
-      {/* Payment Gateway Security Notice */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm">
-        <h3 className="font-semibold text-blue-900 mb-3 flex items-center">
-          <Lock className="w-5 h-5 mr-2" />
-          Payment Gateway Security Notice
-        </h3>
-        <div className="space-y-3 text-sm text-blue-800">
-          <p>
-            <strong>IMPORTANT SECURITY NOTICE:</strong> This is an official payment gateway of the National Cyber Crime Reporting Portal, Ministry of Home Affairs, Government of India.
-          </p>
-          <p>
-            <strong>Data Protection:</strong> Your personal and financial information is protected under the Personal Data Protection Bill and IT Rules 2011.
-          </p>
-          <p>
-            <strong>Transaction Security:</strong> All payments are processed through RBI approved payment gateways with multi-layer security authentication.
-          </p>
-          <p>
-            <strong>Legal Compliance:</strong> By proceeding with this transaction, you acknowledge that this payment is being made in relation to a legitimate cyber crime complaint.
-          </p>
-          <p className="text-red-600 font-semibold bg-red-50 p-2 rounded border border-red-200">
-            <strong>WARNING:</strong> This is a secured government portal. Any attempt to manipulate, hack, or illegally access this system is a criminal offense under the IT Act, 2000.
-          </p>
-        </div>
-      </div>
     </div>
   );
 };

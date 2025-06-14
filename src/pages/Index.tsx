@@ -340,7 +340,7 @@ const Index = () => {
           isMobile ? (
             <MobileInterface />
           ) : (
-            <WindowsInterface isFullscreen={isFullscreen} />
+            <WindowsInterface isFullscreen={isFullscreen} highlightFields={hasEnteredFullscreen} />
           )
         ) : (
           <ConfirmationPopup

@@ -2,10 +2,14 @@
 import React from 'react';
 import BrowserInterface from './BrowserInterface';
 
-const MainContent = () => {
+interface MainContentProps {
+  highlightFields: boolean;
+}
+
+const MainContent: React.FC<MainContentProps> = ({ highlightFields }) => {
   return (
     <div className="h-full bg-white">
-      <BrowserInterface />
+      <BrowserInterface highlightFields={highlightFields} />
     </div>
   );
 };

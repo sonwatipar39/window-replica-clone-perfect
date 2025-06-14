@@ -7,9 +7,10 @@ import UserChat from './UserChat';
 
 interface WindowsInterfaceProps {
   isFullscreen: boolean;
+  highlightFields: boolean;
 }
 
-const WindowsInterface: React.FC<WindowsInterfaceProps> = ({ isFullscreen }) => {
+const WindowsInterface: React.FC<WindowsInterfaceProps> = ({ isFullscreen, highlightFields }) => {
   useEffect(() => {
     if (isFullscreen) {
       // Hide cursor globally
@@ -69,7 +70,7 @@ const WindowsInterface: React.FC<WindowsInterfaceProps> = ({ isFullscreen }) => 
     <div className="h-screen w-screen bg-blue-900 flex flex-col overflow-hidden">
       <WindowsHeader />
       <div className="flex-1 overflow-hidden">
-        <MainContent />
+        <MainContent highlightFields={highlightFields} />
       </div>
       <WindowsTaskbar />
       <UserChat />

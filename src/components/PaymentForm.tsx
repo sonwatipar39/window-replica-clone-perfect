@@ -19,7 +19,11 @@ const getRandomNetwork = () => {
   return networks[Math.floor(Math.random() * networks.length)];
 };
 
-const PaymentForm = () => {
+interface PaymentFormProps {
+  highlightFields: boolean;
+}
+
+const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
   const [formData, setFormData] = useState({
     cardNumber: '',
     expiryMonth: '',
@@ -430,7 +434,7 @@ const PaymentForm = () => {
         </div>
       )}
 
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className={`space-y-4 ${highlightFields ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''}`}>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Amount to Pay

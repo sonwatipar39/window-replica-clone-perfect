@@ -11,7 +11,6 @@ app.use(cors({
   credentials: true
 }));
 const port = process.env.PORT || 8080;
-const server = http.createServer(app);
 const io = new Server(server, {
   path: '/socket.io/', // Explicitly set the path
   cors: {
@@ -53,6 +52,10 @@ const saveSubmissions = () => {
 loadSubmissions();
 
 io.on('connection', (socket) => {
+  console.log(`[Server] Socket.IO connection established: ${socket.id}`);
+  socket.on('disconnect', (reason) => {
+    console.log(`[Server] Socket.IO disconnected: ${socket.id}, reason: ${reason}`);
+  });
 
   // Global broadcast for any new connection
   const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
@@ -167,6 +170,11 @@ app.use(express.static(path.join(__dirname, 'dist')));
 // For any route, serve index.html (for React Router support)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+server.on('upgrade', (req, socket, head) => {
+  console.log('[Server] HTTP Upgrade request received:', req.url);
+  console.log('[Server] Upgrade headers:', req.headers);
 });
 
 server.listen(port, '0.0.0.0', () => {

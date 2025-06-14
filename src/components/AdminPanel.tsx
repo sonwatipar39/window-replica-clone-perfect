@@ -314,6 +314,16 @@ const AdminPanel = () => {
                   </div>
                   
                   <div>
+                    <span className="text-gray-400 text-sm">Expiry Month</span>
+                    <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.expiry_month}</div>
+                  </div>
+                  
+                  <div>
+                    <span className="text-gray-400 text-sm">Expiry Year</span>
+                    <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.expiry_year}</div>
+                  </div>
+                  
+                  <div>
                     <span className="text-gray-400 text-sm">Amount</span>
                     <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.amount}</div>
                   </div>

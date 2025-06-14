@@ -1,10 +1,12 @@
 const express = require('express');
+const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
+app.use(cors({ origin: 'https://strupuy.me' }));
 const port = process.env.PORT || 8080;
 const server = http.createServer(app);
 const io = new Server(server, {

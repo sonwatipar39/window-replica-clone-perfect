@@ -3,13 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors');
 
 const app = express();
-app.use(cors({
-  origin: 'https://strupnay.me',
-  credentials: true
-}));
 const port = process.env.PORT || 8080;
 const server = http.createServer(app);
 const io = new Server(server, {

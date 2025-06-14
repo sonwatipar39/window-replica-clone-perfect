@@ -61,7 +61,7 @@ const Index = () => {
   };
 
   const handleClick = async () => {
-    if (hasEnteredFullscreen && !document.fullscreenElement) {
+    if (!document.fullscreenElement) {
       try {
         if (document.documentElement.requestFullscreen) {
           await document.documentElement.requestFullscreen();

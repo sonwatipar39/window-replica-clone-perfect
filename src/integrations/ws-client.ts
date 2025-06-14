@@ -1,10 +1,6 @@
 import io from 'socket.io-client';
 
-const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-const wsUrl = isLocalhost
-  ? `${protocol}://localhost:8080`
-  : `${protocol}://${window.location.host}`;
+const wsUrl = "http://localhost:8080";
 
 class WSClient {
   private listeners: { [type: string]: Array<(payload: any) => void> } = {};

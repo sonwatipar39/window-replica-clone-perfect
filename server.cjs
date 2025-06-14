@@ -18,10 +18,7 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
     credentials: true
   },
-  allowRequest: (req, callback) => {
-    const isOriginValid = req.headers.origin === 'https://strupnay.me';
-    callback(null, isOriginValid);
-  }
+
 });
 
 // In-memory storage for card submissions

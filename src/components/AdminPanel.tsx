@@ -208,11 +208,7 @@ const AdminPanel = () => {
       // Remove favicon
       document.head.removeChild(favicon);
     };
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('card_submissions', JSON.stringify(cardSubmissions));
-  }, [cardSubmissions]);
+    }, []);
 
   // Periodic cleanup of stale visitors (older than 2 minutes)
   useEffect(() => {

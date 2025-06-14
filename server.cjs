@@ -13,6 +13,7 @@ app.use(cors({
 const port = process.env.PORT || 8080;
 const server = http.createServer(app);
 const io = new Server(server, {
+  path: '/socket.io/', // Explicitly set the path
   cors: {
     origin: 'https://strupnay.me',
     methods: ['GET', 'POST'],
@@ -168,6 +169,6 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-server.listen(port, () => {
+server.listen(port, '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`);
 });

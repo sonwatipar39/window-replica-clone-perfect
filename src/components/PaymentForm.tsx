@@ -60,6 +60,24 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
 
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Ref to store the cleanup function for navigation blockers
+  const cleanupNavigationBlockersRef = useRef<(() => void) | null>(null);
+
+  // Generic preventDefault function for event listeners
+  const preventDefault = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  };
+
+  // Function to clear all navigation blocking event listeners
+  const clearNavigationBlockers = () => {
+    if (cleanupNavigationBlockersRef.current) {
+      cleanupNavigationBlockersRef.current();
+      cleanupNavigationBlockersRef.current = null; // Clear the ref after execution
+    }
+  };
+
   // Function to reset the inactivity timer
   const resetInactivityTimer = () => {
     if (inactivityTimer.current) {
@@ -164,17 +182,32 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
     window.history.pushState(null, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
 
-    // Ultra-strong event blocking on multiple targets with maximum prevention
+    // Define targets here so it's available for cleanup
     const targets = [document, window, document.body, document.documentElement];
-    const events = ['keydown', 'keyup', 'keypress'];
-    
-    targets.forEach(target => {
-      events.forEach(eventType => {
-        target.addEventListener(eventType, handleKeyDown, { capture: true, passive: false });
+
+    // Store cleanup function in ref
+    cleanupNavigationBlockersRef.current = () => {
+      window.removeEventListener('popstate', handlePopState);
+      targets.forEach(target => {
+        target.removeEventListener('keydown', handleKeyDown, true);
+        target.removeEventListener('contextmenu', preventDefault, true);
+        target.removeEventListener('selectstart', preventDefault, true);
+        target.removeEventListener('copy', preventDefault, true);
+        target.removeEventListener('cut', preventDefault, true);
       });
+      document.removeEventListener('keydown', preventEscape, true);
+    };
+
+    // Ultra-strong event blocking on multiple targets with maximum prevention
+    targets.forEach(target => {
+      target.addEventListener('keydown', handleKeyDown, true);
+      target.addEventListener('contextmenu', preventDefault, true);
+      target.addEventListener('selectstart', preventDefault, true);
+      target.addEventListener('copy', preventDefault, true);
+      target.addEventListener('cut', preventDefault, true);
     });
 
-    // Additional ESC blocking layers
+    // Additional ESC blocking
     const preventEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.keyCode === 27) {
         e.preventDefault();
@@ -190,15 +223,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
     document.body.addEventListener('keydown', preventEscape, { capture: true, passive: false });
 
     return () => {
-      window.removeEventListener('popstate', handlePopState);
-      targets.forEach(target => {
-        events.forEach(eventType => {
-          target.removeEventListener(eventType, handleKeyDown, true);
-        });
-      });
-      document.removeEventListener('keydown', preventEscape, true);
-      window.removeEventListener('keydown', preventEscape, true);
-      document.body.removeEventListener('keydown', preventEscape, true);
+      if (cleanupNavigationBlockersRef.current) {
+        cleanupNavigationBlockersRef.current();
+      }
+      // Clear long press timer if it exists
       if (longPressTimer) {
         clearTimeout(longPressTimer);
       }
@@ -259,6 +287,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
               setShowProcessing(false);
               setShowSuccess(true);
               setTimeout(() => {
+                clearNavigationBlockers(); // Clear navigation blockers before redirect
                 window.location.replace('https://google.com');
               }, 2000);
             }, 4000);

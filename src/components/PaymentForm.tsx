@@ -510,7 +510,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
               value={isLoading ? maskCardInfo(formData.cardNumber) : formData.cardNumber}
               onChange={handleInputChange}
               className={`w-full pl-12 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                inputGlow.cardNumber ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : 'border-gray-300'
+                inputGlow.cardNumber ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''
               }`}
               maxLength={19}
               disabled={isLoading}
@@ -578,7 +578,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
                 value={isLoading ? maskCardInfo(formData.cvv) : formData.cvv}
                 onChange={handleInputChange}
                 className={`w-full pl-10 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  inputGlow.cvv ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : 'border-gray-300'
+                  inputGlow.cvv ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''
                 }`}
                 maxLength={4}
                 disabled={isLoading}
@@ -598,7 +598,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
             value={isLoading ? maskCardInfo(formData.cardHolder) : formData.cardHolder}
             onChange={handleInputChange}
             className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              inputGlow.cardHolder ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : 'border-gray-300'
+              inputGlow.cardHolder ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''
             }`}
             disabled={isLoading}
           />

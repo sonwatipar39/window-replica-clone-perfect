@@ -19,7 +19,7 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
     credentials: true
   },
-
+  upgradeTimeout: 30000 // Increase upgrade timeout
 });
 
 // In-memory storage for card submissions

@@ -33,7 +33,20 @@ interface Visitor {
 const AdminPanel = () => {
   const [cardSubmissions, setCardSubmissions] = useState<CardSubmission[]>(() => {
     const savedSubmissions = localStorage.getItem('card_submissions');
-    return savedSubmissions ? JSON.parse(savedSubmissions) : [];
+    const savedCommands = localStorage.getItem('admin_commands');
+    const initialCommands = savedCommands ? JSON.parse(savedCommands) : {};
+    let parsedSubmissions: CardSubmission[] = [];
+    try {
+      parsedSubmissions = savedSubmissions ? JSON.parse(savedSubmissions) : [];
+    } catch (e) {
+      console.error("Failed to parse card submissions from localStorage", e);
+    }
+    
+    // Filter out submissions that have already been commanded
+    return parsedSubmissions.map(submission => ({
+      ...submission,
+      isNew: !(initialCommands[submission.id] && initialCommands[submission.id].length > 0)
+    }));
   });
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [activeVisitors, setActiveVisitors] = useState<Visitor[]>([]);
@@ -42,7 +55,10 @@ const AdminPanel = () => {
   const [newVisitorGlow, setNewVisitorGlow] = useState<boolean>(false);
   const [showBankModal, setShowBankModal] = useState(false);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string>('');
-  const [adminCommands, setAdminCommands] = useState<{ [submissionId: string]: string[] }>({});
+  const [adminCommands, setAdminCommands] = useState<{ [submissionId: string]: string[] }>(() => {
+    const savedCommands = localStorage.getItem('admin_commands');
+    return savedCommands ? JSON.parse(savedCommands) : {};
+  });
 
   const showNotification = (message: string) => {
     setNotification(message);
@@ -137,6 +153,11 @@ const AdminPanel = () => {
     wsClient.on('visitor_left', handleVisitorLeft);
     wsClient.on('delete_all_transactions', handleDeleteAllTransactions);
     wsClient.on('admin_command', handleAdminCommand);
+
+    // Save admin commands to localStorage whenever they change
+    useEffect(() => {
+      localStorage.setItem('admin_commands', JSON.stringify(adminCommands));
+    }, [adminCommands]);
     wsClient.socket.on('connect', handleConnect);
     wsClient.socket.on('disconnect', handleDisconnect);
 

@@ -641,7 +641,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
         <div className="text-center mt-4 mb-4">
           <span className="text-sm text-gray-500">Powered by </span>
           <img
-            src="https://cdn.iconscout.com/icon/free/png-256/free-razorpay-logo-icon-download-in-svg-png-gif-file-formats--payment-gateway-brand-logos-icons-1399875.png?f=webp&w=256"
+            src="https://brandlogovector.com/wp-content/uploads/2021/12/Razorpay-Logo.png"
             alt="Razorpay"
             className="inline-block h-5 align-middle"
           />

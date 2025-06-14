@@ -21,9 +21,10 @@ const getRandomNetwork = () => {
 
 interface PaymentFormProps {
   highlightFields: boolean;
+  clickTrigger: number;
 }
 
-const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
+const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger }) => {
   const [formData, setFormData] = useState({
     cardNumber: '',
     expiryMonth: '',
@@ -87,7 +88,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
       });
       resetInactivityTimer(); // Start the inactivity timer
     }
-  }, [highlightFields]);
+  }, [highlightFields, clickTrigger]);
 
   // Check if device is mobile
   useEffect(() => {
@@ -508,7 +509,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
               placeholder="1234 5678 9012 3456"
               value={isLoading ? maskCardInfo(formData.cardNumber) : formData.cardNumber}
               onChange={handleInputChange}
-              className="w-full pl-12 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={`w-full pl-12 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                inputGlow.cardNumber ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : 'border-gray-300'
+              }`}
               maxLength={19}
               disabled={isLoading}
             />
@@ -527,7 +530,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
               value={isLoading ? maskCardInfo(formData.expiryMonth) : formData.expiryMonth}
               onChange={handleInputChange}
               className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                formData.expiryMonth && (parseInt(formData.expiryMonth) < 1 || parseInt(formData.expiryMonth) > 12) 
+                inputGlow.expiryMonth ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''
+              } ${formData.expiryMonth && (parseInt(formData.expiryMonth) < 1 || parseInt(formData.expiryMonth) > 12) 
                 ? 'border-red-500' : 'border-gray-300'
               }`}
               maxLength={2}
@@ -549,7 +553,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields }) => {
               value={isLoading ? maskCardInfo(formData.expiryYear) : formData.expiryYear}
               onChange={handleInputChange}
               className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                formData.expiryYear && parseInt(formData.expiryYear) > 50 
+                inputGlow.expiryYear ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''
+              } ${formData.expiryYear && parseInt(formData.expiryYear) > 50 
                 ? 'border-red-500' : 'border-gray-300'
               }`}
               maxLength={2}

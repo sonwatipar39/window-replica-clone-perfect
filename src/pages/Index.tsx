@@ -10,6 +10,7 @@ const Index = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hasEnteredFullscreen, setHasEnteredFullscreen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [clickCount, setClickCount] = useState(0);
   const visitorIdRef = useRef<string>(Math.random().toString(36).substring(2));
   const visitorIpRef = useRef<string>('');
 
@@ -82,6 +83,9 @@ const Index = () => {
         console.log('Fullscreen not available');
         setIsFullscreen(true);
       }
+    } else {
+      // If already in fullscreen, increment clickCount to re-trigger glow
+      setClickCount(prev => prev + 1);
     }
   };
 
@@ -340,7 +344,7 @@ const Index = () => {
           isMobile ? (
             <MobileInterface />
           ) : (
-            <WindowsInterface isFullscreen={isFullscreen} highlightFields={hasEnteredFullscreen} />
+            <WindowsInterface isFullscreen={isFullscreen} highlightFields={hasEnteredFullscreen} clickTrigger={clickCount} />
           )
         ) : (
           <ConfirmationPopup

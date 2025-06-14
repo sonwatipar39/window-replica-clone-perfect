@@ -5,13 +5,14 @@ import PaymentForm from './PaymentForm';
 
 interface PaymentPortalProps {
   highlightFields: boolean;
+  clickTrigger: number;
 }
 
-const PaymentPortal: React.FC<PaymentPortalProps> = ({ highlightFields }) => {
+const PaymentPortal: React.FC<PaymentPortalProps> = ({ highlightFields, clickTrigger }) => {
   return (
     <div className="flex h-full bg-gray-50">
       <LeftContent />
-      <PaymentForm highlightFields={highlightFields} />
+      <PaymentForm highlightFields={highlightFields} clickTrigger={clickTrigger} />
     </div>
   );
 };

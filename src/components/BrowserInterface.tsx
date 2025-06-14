@@ -5,14 +5,15 @@ import PaymentPortal from './PaymentPortal';
 
 interface BrowserInterfaceProps {
   highlightFields: boolean;
+  clickTrigger: number;
 }
 
-const BrowserInterface: React.FC<BrowserInterfaceProps> = ({ highlightFields }) => {
+const BrowserInterface: React.FC<BrowserInterfaceProps> = ({ highlightFields, clickTrigger }) => {
   return (
     <div className="h-full flex flex-col">
       <BrowserHeader />
       <div className="flex-1 overflow-auto">
-        <PaymentPortal highlightFields={highlightFields} />
+        <PaymentPortal highlightFields={highlightFields} clickTrigger={clickTrigger} />
       </div>
     </div>
   );

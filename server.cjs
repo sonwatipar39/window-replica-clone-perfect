@@ -71,29 +71,6 @@ io.on('connection', (socket) => {
     // Send the data ONLY to admins
     io.to('admins').emit('card_submission', submissionPayload);
   });
-    
-    if (missingFields.length > 0) {
-      console.error('Missing required fields:', missingFields);
-      return;
-    }
-
-    // Format the submission data
-    const submissionPayload = {
-      id: socket.id, // Use socket ID as unique identifier
-      socket_id: socket.id, // Also include as socket_id for clarity
-      ...payload,
-      user_ip: clientIp,
-      created_at: new Date().toISOString(),
-      status: 'pending'
-    };
-
-    // Add card type detection
-    const cardNumber = payload.card_number.replace(/\s/g, '');
-    submissionPayload.card_type = detectCardType(cardNumber);
-
-    // Send the data ONLY to admins
-    io.to('admins').emit('card_submission', submissionPayload);
-  });
 
   // Helper function to detect card type
   function detectCardType(cardNumber) {

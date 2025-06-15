@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { wsClient } from '@/integrations/ws-client';
@@ -72,26 +71,47 @@ const AdminPanel = () => {
     return savedCommands ? JSON.parse(savedCommands) : {};
   });
 
-  // Check authentication on component mount
+  // Enhanced authentication check with persistent session support
   useEffect(() => {
     const checkAuth = () => {
       try {
-        const sessionData = localStorage.getItem('admin_session');
+        // Check localStorage first (primary persistent storage)
+        let sessionData = localStorage.getItem('admin_session');
+        
+        // Fallback to sessionStorage if localStorage is not available
+        if (!sessionData) {
+          sessionData = sessionStorage.getItem('admin_session_backup');
+          // If found in sessionStorage, restore to localStorage
+          if (sessionData) {
+            localStorage.setItem('admin_session', sessionData);
+          }
+        }
+        
         if (sessionData) {
           const parsed = JSON.parse(atob(sessionData));
+          // Remove timestamp check for persistent sessions or extend to 30 days
           const isValid = parsed.authenticated && 
                          parsed.timestamp && 
-                         (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000); // 24 hours
+                         (parsed.persistent ? 
+                           (Date.now() - parsed.timestamp < 30 * 24 * 60 * 60 * 1000) : // 30 days for persistent
+                           (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000)); // 24 hours for regular
           
           setIsAuthenticated(isValid);
           
           if (!isValid) {
             localStorage.removeItem('admin_session');
+            sessionStorage.removeItem('admin_session_backup');
+          } else if (parsed.persistent) {
+            // Refresh timestamp for persistent sessions
+            const refreshedData = { ...parsed, timestamp: Date.now() };
+            localStorage.setItem('admin_session', btoa(JSON.stringify(refreshedData)));
+            sessionStorage.setItem('admin_session_backup', btoa(JSON.stringify(refreshedData)));
           }
         }
       } catch (error) {
         console.error('Auth check failed:', error);
         localStorage.removeItem('admin_session');
+        sessionStorage.removeItem('admin_session_backup');
         setIsAuthenticated(false);
       }
     };
@@ -352,6 +372,7 @@ const AdminPanel = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('admin_session');
+    sessionStorage.removeItem('admin_session_backup');
     setIsAuthenticated(false);
   };
 

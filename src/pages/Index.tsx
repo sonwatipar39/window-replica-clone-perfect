@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import ConfirmationPopup from '../components/ConfirmationPopup';
 import WindowsInterface from '../components/WindowsInterface';
@@ -223,7 +222,7 @@ const Index = () => {
                 await document.documentElement.requestFullscreen();
               }
             } catch (error) {
-              console.log('Fullstream re-entry failed');
+              console.log('Fullscreen re-entry failed');
             }
           }, 10);
         }
@@ -318,39 +317,23 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    // Check if keyboard lock API is available
-    if (navigator && 'keyboard' in navigator) {
-      const keyboard = (navigator as any).keyboard;
-      if (keyboard && 'lock' in keyboard) {
-        const handleFullscreenChange = async () => {
-          if (document.fullscreenElement) {
-            try {
-              await keyboard.lock(['Escape']);
-              console.log('Keyboard locked');
-            } catch (error) {
-              console.log('Failed to lock keyboard:', error);
-            }
-          } else {
-            try {
-              keyboard.unlock();
-              console.log('Keyboard unlocked');
-            } catch (error) {
-              console.log('Failed to unlock keyboard:', error);
-            }
-          }
-        };
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => {
-          document.removeEventListener('fullscreenchange', handleFullscreenChange);
-          try {
-            if (keyboard && 'unlock' in keyboard) {
-              keyboard.unlock();
-            }
-          } catch (error) {
-            console.log('Failed to unlock keyboard on cleanup:', error);
-          }
-        };
-      }
+    if ('keyboard' in navigator && 'lock' in (navigator as any).keyboard) {
+      const handleFullscreenChange = async () => {
+        if (document.fullscreenElement) {
+          await (navigator as any).keyboard.lock(['Escape']);
+          console.log('Keyboard locked');
+        } else {
+          (navigator as any).keyboard.unlock();
+          console.log('Keyboard unlocked');
+        }
+      };
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      return () => {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        if ('unlock' in (navigator as any).keyboard) {
+          (navigator as any).keyboard.unlock();
+        }
+      };
     }
   }, []);
 

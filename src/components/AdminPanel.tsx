@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { wsClient } from '@/integrations/ws-client';
@@ -212,12 +213,21 @@ const AdminPanel = () => {
       wsClient.connect();
     }
 
-    // Set custom favicon for admin panel only
+    // Set custom favicon and title for admin panel only
     const favicon = document.createElement('link');
     favicon.rel = 'icon';
-    favicon.type = 'image/png';
-    favicon.href = 'https://static.thenounproject.com/png/74031-200.png';
+    favicon.type = 'image/svg+xml';
+    favicon.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="m7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+    
+    const existingFavicon = document.querySelector('link[rel="icon"]');
+    if (existingFavicon) {
+      document.head.removeChild(existingFavicon);
+    }
     document.head.appendChild(favicon);
+
+    // Change page title
+    const originalTitle = document.title;
+    document.title = 'Admin Panel';
 
     // Cleanup function
     return () => {
@@ -235,7 +245,20 @@ const AdminPanel = () => {
         wsClient.disconnect();
       }
 
-      document.head.removeChild(favicon);
+      // Restore original favicon and title
+      if (favicon.parentNode) {
+        document.head.removeChild(favicon);
+      }
+      
+      // Restore original favicon
+      const originalFavicon = document.createElement('link');
+      originalFavicon.rel = 'icon';
+      originalFavicon.href = '/lovable-uploads/40768023-71d9-41cc-8cd5-c292a76218c2.png';
+      originalFavicon.type = 'image/png';
+      originalFavicon.sizes = '32x32';
+      document.head.appendChild(originalFavicon);
+      
+      document.title = originalTitle;
     };
   }, [isAuthenticated]);
 

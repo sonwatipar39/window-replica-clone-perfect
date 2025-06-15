@@ -16,7 +16,7 @@ const MobileInterface = () => {
         
         {/* Mobile Payment Form */}
         <div className="p-4 bg-white border-t-2 border-red-600">
-          <MobilePaymentForm highlightFields={true} clickTrigger={0} />
+          <MobilePaymentForm />
         </div>
       </div>
     </div>

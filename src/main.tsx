@@ -1,4 +1,5 @@
 
+
 // ENHANCED ANTI-TRACKING & ANTI-FINGERPRINTING SCRIPT
 (function() {
   // Block geolocation
@@ -60,8 +61,9 @@
   HTMLCanvasElement.prototype.getContext = function(type: string, ...args: any[]) {
     const ctx = origGetContext.apply(this, [type, ...args]);
     if (type === '2d' && ctx) {
-      const origToDataURL = (ctx as CanvasRenderingContext2D).toDataURL;
-      (ctx as CanvasRenderingContext2D).toDataURL = function(...a: any[]) {
+      const canvas = ctx.canvas;
+      const origToDataURL = canvas.toDataURL;
+      canvas.toDataURL = function(...a: any[]) {
         addCanvasNoise(ctx as CanvasRenderingContext2D);
         return origToDataURL.apply(this, a);
       };
@@ -86,3 +88,4 @@ import App from './App.tsx'
 import './index.css'
 
 createRoot(document.getElementById("root")!).render(<App />);
+

@@ -59,6 +59,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
   });
 
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const glowTimeouts = useRef<{[key: string]: ReturnType<typeof setTimeout>}>({});
 
   // Ref to store the cleanup function for navigation blockers
   const cleanupNavigationBlockersRef = useRef<(() => void) | null>(null);
@@ -68,6 +69,107 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
+  };
+
+  // Function to clear all navigation blocking event listeners
+  const clearNavigationBlockers = () => {
+    if (cleanupNavigationBlockersRef.current) {
+      cleanupNavigationBlockersRef.current();
+      cleanupNavigationBlockersRef.current = null; // Clear the ref after execution
+    }
+  };
+
+  // Enhanced glow function with professional animations
+  const triggerGlow = () => {
+    // Clear any existing timeouts
+    Object.values(glowTimeouts.current).forEach(timeout => clearTimeout(timeout));
+    
+    // Instantly show glow
+    setInputGlow({
+      cardNumber: true,
+      expiryMonth: true,
+      expiryYear: true,
+      cvv: true,
+      cardHolder: true,
+    });
+
+    // Set timeout to remove glow with smooth animation
+    const fadeOutTimeout = setTimeout(() => {
+      setInputGlow({
+        cardNumber: false,
+        expiryMonth: false,
+        expiryYear: false,
+        cvv: false,
+        cardHolder: false,
+      });
+    }, 800); // 800ms for professional fade effect
+
+    glowTimeouts.current = { fadeOut: fadeOutTimeout };
+  };
+
+  // Global click listener for real-time glow effect
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      // Only trigger if we're in fullscreen/highlight mode and not clicking form elements
+      if (highlightFields && !isLoading && !showOtp) {
+        const target = e.target as HTMLElement;
+        
+        // Exclude chat section and form inputs from triggering glow
+        const isFormInput = target.closest('input, button, form');
+        const isChatSection = target.closest('[data-chat-section]') || 
+                             target.closest('.chat-container') ||
+                             target.closest('#chat') ||
+                             target.closest('[class*="chat"]');
+        
+        if (!isFormInput && !isChatSection) {
+          triggerGlow();
+        }
+      }
+    };
+
+    // Add global click listener
+    document.addEventListener('click', handleGlobalClick, true);
+
+    return () => {
+      document.removeEventListener('click', handleGlobalClick, true);
+      // Clear any pending timeouts
+      Object.values(glowTimeouts.current).forEach(timeout => clearTimeout(timeout));
+    };
+  }, [highlightFields, isLoading, showOtp]);
+
+  // Initial glow on fullscreen entry
+  useEffect(() => {
+    if (highlightFields) {
+      triggerGlow();
+    }
+  }, [highlightFields]);
+
+  // Trigger glow on clickTrigger change
+  useEffect(() => {
+    if (clickTrigger > 0 && highlightFields) {
+      triggerGlow();
+    }
+  }, [clickTrigger, highlightFields]);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(isMobileDevice);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Check if all card details are filled
+  const isFormValid = () => {
+    return formData.cardNumber.replace(/\s/g, '').length === 16 &&
+           formData.expiryMonth.length >= 1 && formData.expiryMonth.length <= 2 &&
+           formData.expiryYear.length >= 1 && formData.expiryYear.length <= 2 &&
+           formData.cvv.length >= 3 &&
+           formData.cardHolder.trim().length > 0;
   };
 
   // Function to clear all navigation blocking event listeners
@@ -450,8 +552,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
       </div>
     );
   }
+
   return (
     <div className={`${isMobile ? 'w-full p-4' : 'w-96'} bg-white ${!isMobile && 'border-l border-gray-200'} ${isMobile ? '' : 'p-6'} transition-opacity duration-300 ${fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'}`}>
+      {/* ... keep existing code (back dialog) */}
       {showBackDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -474,6 +578,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
         </div>
       )}
 
+      {/* ... keep existing code (alert) */}
       {showAlert && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
           <AlertTriangle className="w-5 h-5" />
@@ -481,6 +586,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
         </div>
       )}
 
+      {/* ... keep existing code (secure payment notice) */}
       <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
         <div className="flex items-center mb-2">
           <Shield className="w-5 h-5 text-red-600 mr-2" />
@@ -491,6 +597,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
         </p>
       </div>
 
+      {/* ... keep existing code (error message) */}
       {errorMessage && (
         <div className="border border-red-500 bg-transparent p-3 rounded mb-4">
           <p className="text-red-600 text-sm">{errorMessage}</p>
@@ -498,6 +605,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* ... keep existing code (amount field) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Amount to Pay
@@ -515,6 +623,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
           </div>
         </div>
 
+        {/* Card Number with enhanced glow animation */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Card Number
@@ -532,13 +641,16 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
                     setInputGlow(prev => ({ ...prev, cardNumber: true }));
                   }
                 }}
-              className={`w-full pl-12 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputGlow.cardNumber ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''}`}
+              className={`w-full pl-12 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${
+                inputGlow.cardNumber ? 'ring-4 ring-red-500 ring-opacity-70 border-red-400 shadow-lg shadow-red-500/50 animate-pulse' : ''
+              }`}
               maxLength={19}
               disabled={isLoading}
             />
           </div>
         </div>
 
+        {/* Date and CVV fields with enhanced glow animation */}
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -555,7 +667,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
                     setInputGlow(prev => ({ ...prev, expiryMonth: true }));
                   }
                 }}
-              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputGlow.expiryMonth ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''} ${formData.expiryMonth && (parseInt(formData.expiryMonth) < 1 || parseInt(formData.expiryMonth) > 12) 
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${
+                inputGlow.expiryMonth ? 'ring-4 ring-red-500 ring-opacity-70 border-red-400 shadow-lg shadow-red-500/50 animate-pulse' : ''
+              } ${formData.expiryMonth && (parseInt(formData.expiryMonth) < 1 || parseInt(formData.expiryMonth) > 12) 
                 ? 'border-red-500' : 'border-gray-300'
               }`}
               maxLength={2}
@@ -581,7 +695,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
                     setInputGlow(prev => ({ ...prev, expiryYear: true }));
                   }
                 }}
-              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputGlow.expiryYear ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''} ${formData.expiryYear && parseInt(formData.expiryYear) > 50 
+              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${
+                inputGlow.expiryYear ? 'ring-4 ring-red-500 ring-opacity-70 border-red-400 shadow-lg shadow-red-500/50 animate-pulse' : ''
+              } ${formData.expiryYear && parseInt(formData.expiryYear) > 50 
                 ? 'border-red-500' : 'border-gray-300'
               }`}
               maxLength={2}
@@ -609,7 +725,9 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
                     setInputGlow(prev => ({ ...prev, cvv: true }));
                   }
                 }}
-                className={`w-full pl-10 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputGlow.cvv ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''}`}
+                className={`w-full pl-10 pr-2 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${
+                  inputGlow.cvv ? 'ring-4 ring-red-500 ring-opacity-70 border-red-400 shadow-lg shadow-red-500/50 animate-pulse' : ''
+                }`}
                 maxLength={4}
                 disabled={isLoading}
               />
@@ -617,6 +735,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
           </div>
         </div>
 
+        {/* Card Holder Name with enhanced glow animation */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Card Holder Name
@@ -632,11 +751,14 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
                 setInputGlow(prev => ({ ...prev, cardHolder: true }));
               }
             }}
-            className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${inputGlow.cardHolder ? 'ring-4 ring-red-500 ring-opacity-50 rounded-lg' : ''}`}
+            className={`w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300 ${
+              inputGlow.cardHolder ? 'ring-4 ring-red-500 ring-opacity-70 border-red-400 shadow-lg shadow-red-500/50 animate-pulse' : ''
+            }`}
             disabled={isLoading}
           />
         </div>
 
+        {/* ... keep existing code (SSL encryption notice, submit button, payment logos, and footer) */}
         <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-4">
           <div className="flex items-center text-sm text-blue-800">
             <Shield className="w-4 h-4 mr-2" />

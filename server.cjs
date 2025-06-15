@@ -60,28 +60,93 @@ const saveSubmissions = () => {
   }
 };
 
-// Function to get client IP address
+// Function to get client IP address with better detection
 const getClientIP = (socket) => {
-  return socket.handshake.headers['x-forwarded-for'] || 
-         socket.handshake.headers['x-real-ip'] || 
-         socket.conn.remoteAddress || 
-         socket.handshake.address || 
-         'Unknown';
+  const forwarded = socket.handshake.headers['x-forwarded-for'];
+  const realIp = socket.handshake.headers['x-real-ip'];
+  const cfConnectingIp = socket.handshake.headers['cf-connecting-ip'];
+  const remoteAddress = socket.conn.remoteAddress;
+  const handshakeAddress = socket.handshake.address;
+  
+  let ip = 'Unknown';
+  
+  if (cfConnectingIp) {
+    ip = cfConnectingIp;
+  } else if (forwarded) {
+    ip = forwarded.split(',')[0].trim();
+  } else if (realIp) {
+    ip = realIp;
+  } else if (remoteAddress) {
+    ip = remoteAddress.replace('::ffff:', '');
+  } else if (handshakeAddress) {
+    ip = handshakeAddress.replace('::ffff:', '');
+  }
+  
+  // Clean up common localhost variations
+  if (ip === '::1' || ip === '127.0.0.1' || ip === 'localhost') {
+    ip = '127.0.0.1';
+  }
+  
+  console.log(`[Server] Detected client IP: ${ip} (forwarded: ${forwarded}, real-ip: ${realIp}, cf: ${cfConnectingIp}, remote: ${remoteAddress})`);
+  return ip;
 };
 
-// Function to simulate ISP and location data (in production, use a real API)
-const getLocationData = (ip) => {
-  const mockData = {
-    'Unknown': { isp: 'Unknown ISP', country: 'Unknown', country_flag: '🌍' },
-    '127.0.0.1': { isp: 'Local Development', country: 'Localhost', country_flag: '💻' },
-    'localhost': { isp: 'Local Development', country: 'Localhost', country_flag: '💻' }
-  };
+// Function to fetch real location and ISP data
+const getLocationData = async (ip) => {
+  // For localhost/development, return local data
+  if (ip === '127.0.0.1' || ip === 'localhost' || ip === '::1' || ip === 'Unknown') {
+    return {
+      isp: 'Local Development',
+      country: 'Localhost',
+      country_flag: '💻'
+    };
+  }
   
-  return mockData[ip] || {
-    isp: 'Unknown ISP',
-    country: 'Unknown Location',
-    country_flag: '🌍'
-  };
+  try {
+    // Using ip-api.com which is free and doesn't require API key
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,isp,org,query`);
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      // Get country flag emoji
+      const countryCode = data.countryCode;
+      const flagEmoji = countryCode ? getCountryFlag(countryCode) : '🌍';
+      
+      console.log(`[Server] IP location data for ${ip}:`, data);
+      
+      return {
+        isp: data.isp || data.org || 'Unknown ISP',
+        country: data.country || 'Unknown',
+        country_flag: flagEmoji
+      };
+    } else {
+      console.log(`[Server] IP API failed for ${ip}:`, data);
+      return {
+        isp: 'Unknown ISP',
+        country: 'Unknown Location',
+        country_flag: '🌍'
+      };
+    }
+  } catch (error) {
+    console.error(`[Server] Error fetching location data for IP ${ip}:`, error);
+    return {
+      isp: 'Unknown ISP',
+      country: 'Unknown Location',
+      country_flag: '🌍'
+    };
+  }
+};
+
+// Function to convert country code to flag emoji
+const getCountryFlag = (countryCode) => {
+  if (!countryCode || countryCode.length !== 2) return '🌍';
+  
+  const codePoints = countryCode
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt());
+  
+  return String.fromCodePoint(...codePoints);
 };
 
 // Load submissions when the server starts
@@ -102,11 +167,15 @@ setInterval(() => {
 }, 30000); // Check every 30 seconds
 
 // Socket.IO connection handling
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
   console.log(`[Server] Socket.IO connection established: ${socket.id}`);
   
   const clientIp = getClientIP(socket);
-  const locationData = getLocationData(clientIp);
+  console.log(`[Server] Processing connection for IP: ${clientIp}`);
+  
+  // Fetch real location data
+  const locationData = await getLocationData(clientIp);
+  console.log(`[Server] Location data for ${clientIp}:`, locationData);
   
   // Create visitor object
   const visitor = {
@@ -122,7 +191,7 @@ io.on('connection', (socket) => {
   // Store visitor
   activeVisitors.set(socket.id, visitor);
   
-  console.log(`[Server] New visitor: ${socket.id} from ${clientIp}`);
+  console.log(`[Server] New visitor: ${socket.id} from ${clientIp} (${locationData.country}, ${locationData.isp})`);
   
   // Broadcast visitor update to admins
   io.to('admins').emit('visitor_update', visitor);
@@ -135,18 +204,24 @@ io.on('connection', (socket) => {
   });
 
   // Handler for visitor connected event
-  socket.on('visitor_connected', (payload) => {
+  socket.on('visitor_connected', async (payload) => {
     console.log(`[Server] Visitor connected event from ${socket.id}:`, payload);
     
-    // Update visitor info
+    // Update visitor info with fresh location data
+    const freshLocationData = await getLocationData(clientIp);
+    
     if (activeVisitors.has(socket.id)) {
       const existingVisitor = activeVisitors.get(socket.id);
       const updatedVisitor = {
         ...existingVisitor,
         ...payload,
+        ...freshLocationData,
+        ip: clientIp, // Ensure we keep the real IP
         lastSeen: Date.now()
       };
       activeVisitors.set(socket.id, updatedVisitor);
+      
+      console.log(`[Server] Updated visitor ${socket.id} with fresh data:`, updatedVisitor);
       
       // Broadcast updated visitor info to admins
       io.to('admins').emit('visitor_update', updatedVisitor);

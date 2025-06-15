@@ -1,4 +1,3 @@
-
 import io from 'socket.io-client';
 
 const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
@@ -22,8 +21,7 @@ class WSClient {
       forceNew: true, // Force a new connection
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-      maxReconnectionAttempts: 5
+      reconnectionAttempts: 5
     });
     
     this.socket.on('connect', () => {

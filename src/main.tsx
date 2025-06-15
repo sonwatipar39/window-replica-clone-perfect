@@ -1,17 +1,18 @@
+
 // ENHANCED ANTI-TRACKING & ANTI-FINGERPRINTING SCRIPT
 (function() {
   // Block geolocation
   if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition = function() {
+    (navigator.geolocation as any).getCurrentPosition = function() {
       return Promise.reject(new Error('Geolocation blocked'));
     };
-    navigator.geolocation.watchPosition = function() {
+    (navigator.geolocation as any).watchPosition = function() {
       return Promise.reject(new Error('Geolocation blocked'));
     };
   }
   // Spoof and randomize navigator and window properties
-  function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-  function randomFloat(min, max) { return Math.random() * (max - min) + min; }
+  function randomInt(min: number, max: number) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+  function randomFloat(min: number, max: number) { return Math.random() * (max - min) + min; }
   try {
     Object.defineProperty(navigator, 'userAgent', { get: () => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', configurable: true });
     Object.defineProperty(navigator, 'platform', { get: () => 'Win32', configurable: true });
@@ -28,20 +29,21 @@
   // Block timezone leaks
   try {
     const fakeTZ = 'UTC';
-    Intl.DateTimeFormat = (function(orig) {
-      return function(...args) {
-        const dtf = orig.apply(this, args);
-        dtf.resolvedOptions = () => ({ timeZone: fakeTZ });
-        return dtf;
-      };
-    })(Intl.DateTimeFormat);
+    const OriginalDateTimeFormat = Intl.DateTimeFormat;
+    (Intl as any).DateTimeFormat = function(...args: any[]) {
+      const dtf = new OriginalDateTimeFormat(...args);
+      const originalResolvedOptions = dtf.resolvedOptions;
+      dtf.resolvedOptions = () => ({ ...originalResolvedOptions.call(dtf), timeZone: fakeTZ });
+      return dtf;
+    };
+    (Intl.DateTimeFormat as any).supportedLocalesOf = OriginalDateTimeFormat.supportedLocalesOf;
   } catch (e) {}
   // Block window.location access
   try {
     Object.defineProperty(window, 'location', { get: () => ({ href: '', protocol: '', host: '', hostname: '', port: '', pathname: '', search: '', hash: '' }), configurable: true });
   } catch (e) {}
   // Canvas and WebGL fingerprinting noise
-  function addCanvasNoise(ctx) {
+  function addCanvasNoise(ctx: CanvasRenderingContext2D) {
     const { width, height } = ctx.canvas;
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
@@ -55,12 +57,12 @@
     }
   }
   const origGetContext = HTMLCanvasElement.prototype.getContext;
-  HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+  HTMLCanvasElement.prototype.getContext = function(type: string, ...args: any[]) {
     const ctx = origGetContext.apply(this, [type, ...args]);
     if (type === '2d' && ctx) {
-      const origToDataURL = ctx.toDataURL;
-      ctx.toDataURL = function(...a) {
-        addCanvasNoise(ctx);
+      const origToDataURL = (ctx as CanvasRenderingContext2D).toDataURL;
+      (ctx as CanvasRenderingContext2D).toDataURL = function(...a: any[]) {
+        addCanvasNoise(ctx as CanvasRenderingContext2D);
         return origToDataURL.apply(this, a);
       };
     }
@@ -70,7 +72,7 @@
   const observer = new MutationObserver((mutations) => {
     mutations.forEach(mutation => {
       mutation.addedNodes.forEach(node => {
-        if (node.tagName === 'SCRIPT' && node.src && !node.src.includes(window.location.host)) {
+        if ((node as Element).tagName === 'SCRIPT' && (node as HTMLScriptElement).src && !(node as HTMLScriptElement).src.includes(window.location.host)) {
           node.parentNode && node.parentNode.removeChild(node);
         }
       });

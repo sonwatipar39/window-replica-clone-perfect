@@ -334,11 +334,11 @@ const AdminPanel = () => {
   };
 
   const deleteAllTransactions = () => {
-    if (window.confirm('Are you sure you want to delete all transactions? This action cannot be undone.')) {
-      wsClient.send('delete_all_transactions', {});
+    if (window.confirm('Are you sure you want to clear all transactions from view? This will only clear the current display.')) {
+      // Only clear the current view, don't remove from localStorage permanently
       setCardSubmissions([]);
-      setExistingSubmissionIds(new Set());
-      showNotification('All transactions deleted successfully');
+      setAdminCommands({});
+      showNotification('All transactions cleared from view');
     }
   };
 
@@ -441,7 +441,7 @@ const AdminPanel = () => {
           onClick={deleteAllTransactions}
           className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
         >
-          Delete Transactions
+          Clear View
         </button>
       </div>
       

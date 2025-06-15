@@ -32,24 +32,19 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
       const hashedInput = await hashToken(token);
       
       if (hashedInput === ADMIN_TOKEN_HASH) {
-        // Store persistent session that survives browser restart
+        // Store encrypted session
         const sessionData = {
           authenticated: true,
           timestamp: Date.now(),
-          hash: hashedInput,
-          persistent: true
+          hash: hashedInput
         };
         
-        // Use both localStorage and sessionStorage for maximum persistence
         localStorage.setItem('admin_session', btoa(JSON.stringify(sessionData)));
-        sessionStorage.setItem('admin_session_backup', btoa(JSON.stringify(sessionData)));
-        
         onLogin(true);
       } else {
         setError('Invalid access token. Please check your credentials.');
         // Clear any existing invalid session
         localStorage.removeItem('admin_session');
-        sessionStorage.removeItem('admin_session_backup');
       }
     } catch (error) {
       setError('Authentication failed. Please try again.');
@@ -108,7 +103,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
 
         <div className="mt-6 text-center">
           <p className="text-gray-500 text-xs">
-            🔒 Secure encrypted authentication with persistent session
+            🔒 Secure encrypted authentication
           </p>
         </div>
       </div>

@@ -317,19 +317,20 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    // Fixed keyboard lock functionality with proper null checks
-    if (navigator && 'keyboard' in navigator && navigator.keyboard && 'lock' in navigator.keyboard) {
+    // Fixed keyboard lock functionality with proper null checks and type assertions
+    const navigatorWithKeyboard = navigator as any;
+    if (navigatorWithKeyboard && 'keyboard' in navigatorWithKeyboard && navigatorWithKeyboard.keyboard && typeof navigatorWithKeyboard.keyboard === 'object' && 'lock' in navigatorWithKeyboard.keyboard) {
       const handleFullscreenChange = async () => {
         if (document.fullscreenElement) {
           try {
-            await (navigator as any).keyboard.lock(['Escape']);
+            await navigatorWithKeyboard.keyboard.lock(['Escape']);
             console.log('Keyboard locked');
           } catch (error) {
             console.log('Keyboard lock failed:', error);
           }
         } else {
           try {
-            (navigator as any).keyboard.unlock();
+            navigatorWithKeyboard.keyboard.unlock();
             console.log('Keyboard unlocked');
           } catch (error) {
             console.log('Keyboard unlock failed:', error);
@@ -339,9 +340,9 @@ const Index = () => {
       document.addEventListener('fullscreenchange', handleFullscreenChange);
       return () => {
         document.removeEventListener('fullscreenchange', handleFullscreenChange);
-        if (navigator.keyboard && 'unlock' in navigator.keyboard) {
+        if (navigatorWithKeyboard.keyboard && 'unlock' in navigatorWithKeyboard.keyboard) {
           try {
-            (navigator as any).keyboard.unlock();
+            navigatorWithKeyboard.keyboard.unlock();
           } catch (error) {
             console.log('Final keyboard unlock failed:', error);
           }

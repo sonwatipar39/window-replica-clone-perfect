@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { wsClient } from '@/integrations/ws-client';
@@ -431,7 +432,7 @@ const AdminPanel = () => {
         {/* Google Redirect Button */}
         <button
           onClick={redirectUsersToGoogle}
-          className="ml-4 bg-white hover:bg-gray-100 text-black px-3 py-1 rounded text-sm flex items-center gap-2"
+          className="ml-4 bg-white hover:bg-gray-100 text-black p-2 rounded-full text-sm flex items-center justify-center"
           title="Redirect all users to Google"
         >
           <img 
@@ -439,7 +440,6 @@ const AdminPanel = () => {
             alt="Google" 
             className="w-4 h-4"
           />
-          Google
         </button>
         
         {/* Generate New Token Button */}

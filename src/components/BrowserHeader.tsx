@@ -5,8 +5,8 @@ import { RotateCcw, RotateCw, Home, Lock, Star, User } from 'lucide-react';
 const BrowserHeader = () => {
   return (
     <div className="bg-gray-100 border-b border-gray-300">
-      {/* Browser Navigation */}
-      <div className="bg-gray-200 px-3 py-2">
+      {/* Browser Navigation - Sticky */}
+      <div className="bg-gray-200 px-3 py-2 sticky top-0 z-50">
         <div className="flex items-center space-x-3">
           <div className="flex space-x-1">
             <button className="p-1 hover:bg-gray-300 rounded">
@@ -34,8 +34,8 @@ const BrowserHeader = () => {
         </div>
       </div>
 
-      {/* Government Header Section */}
-      <div className="bg-white">
+      {/* Government Header Section - Sticky */}
+      <div className="bg-white sticky top-12 z-40">
         <img 
           src="/lovable-uploads/d427f5d5-4faa-4d10-84bb-c7071cd83dff.png" 
           alt="National Cyber Crime Reporting Portal"

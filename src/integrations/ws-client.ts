@@ -13,12 +13,27 @@ class WSClient {
   private listeners: { [type: string]: Array<(payload: any) => void> } = {};
   socket: any;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
+  private maxReconnectAttempts = 5;
   private isConnecting = false;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
     console.log('[WSClient] Connecting to:', socketUrl);
     this.initSocket();
+  }
+
+  private cleanup() {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      if (this.socket.connected) {
+        this.socket.disconnect();
+      }
+    }
   }
 
   private initSocket() {
@@ -27,17 +42,16 @@ class WSClient {
       return;
     }
     
+    // Clean up any existing socket
+    this.cleanup();
+    
     this.isConnecting = true;
     
     this.socket = io(socketUrl, { 
       transports: ['polling', 'websocket'],
-      timeout: 20000,
-      forceNew: false,
-      reconnection: true,
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
-      reconnectionAttempts: 10,
-      upgrade: true,
+      timeout: 10000,
+      forceNew: true,
+      reconnection: false, // We'll handle reconnection manually
       autoConnect: true
     });
     
@@ -45,7 +59,6 @@ class WSClient {
       console.log('[WSClient] Socket.IO connected with ID:', this.socket.id);
       this.reconnectAttempts = 0;
       this.isConnecting = false;
-      // Send visitor info when connected
       this.sendVisitorInfo();
     });
 
@@ -53,20 +66,12 @@ class WSClient {
       console.log('[WSClient] Socket.IO disconnected, reason:', reason);
       this.isConnecting = false;
       
-      // Only attempt manual reconnection for certain disconnect reasons
-      if (reason === 'io server disconnect') {
-        // Server initiated disconnect, try to reconnect
-        setTimeout(() => {
-          if (!this.socket.connected && this.reconnectAttempts < this.maxReconnectAttempts) {
-            console.log('[WSClient] Attempting manual reconnection...');
-            this.reconnectAttempts++;
-            this.socket.connect();
-          }
-        }, 5000);
+      // Only attempt reconnection for certain reasons and within limits
+      if (reason === 'io server disconnect' && this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.scheduleReconnect();
       }
     });
 
-    // Enhanced error handling
     this.socket.on('connect_error', (error: any) => {
       console.error('[WSClient] Socket.IO connection error:', error);
       this.isConnecting = false;
@@ -74,13 +79,9 @@ class WSClient {
       
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
         console.log(`[WSClient] Will retry connection... Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+        this.scheduleReconnect();
       } else {
         console.error('[WSClient] Max reconnection attempts reached');
-        // Reset after a longer delay
-        setTimeout(() => {
-          this.reconnectAttempts = 0;
-          console.log('[WSClient] Resetting reconnection attempts...');
-        }, 30000);
       }
     });
 
@@ -91,21 +92,6 @@ class WSClient {
 
     this.socket.on('error', (error: any) => {
       console.error('[WSClient] Socket.IO error:', error);
-    });
-
-    this.socket.on('reconnect', (attemptNumber) => {
-      console.log('[WSClient] Socket.IO reconnected after', attemptNumber, 'attempts');
-      this.reconnectAttempts = 0;
-      this.sendVisitorInfo();
-    });
-
-    this.socket.on('reconnect_error', (error) => {
-      console.error('[WSClient] Socket.IO reconnection error:', error);
-    });
-
-    this.socket.on('reconnect_failed', () => {
-      console.error('[WSClient] Socket.IO reconnection failed');
-      this.isConnecting = false;
     });
 
     // Listen for all relayed events
@@ -133,9 +119,24 @@ class WSClient {
     });
   }
 
+  private scheduleReconnect() {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
+    
+    const delay = Math.min(2000 * Math.pow(2, this.reconnectAttempts), 30000);
+    console.log(`[WSClient] Scheduling reconnect in ${delay}ms`);
+    
+    this.reconnectTimeout = setTimeout(() => {
+      if (!this.socket?.connected) {
+        this.initSocket();
+      }
+    }, delay);
+  }
+
   private sendVisitorInfo() {
     const visitorData = {
-      ip: 'Unknown', // Will be detected on server
+      ip: 'Unknown',
       user_agent: navigator.userAgent,
       device_time: new Date().toLocaleString(),
       timestamp: Date.now()
@@ -146,18 +147,8 @@ class WSClient {
   }
 
   send(type: string, payload: any) {
-    if (!this.socket || !this.socket.connected) {
-      console.warn('[WSClient] Socket not connected, attempting to reconnect...');
-      this.connect();
-      // Queue the message for when connection is restored
-      setTimeout(() => {
-        if (this.socket && this.socket.connected) {
-          console.log(`[WSClient] Sending queued event: ${type}`, payload);
-          this.socket.emit(type, payload);
-        } else {
-          console.error('[WSClient] Failed to reconnect, cannot send event:', type);
-        }
-      }, 3000);
+    if (!this.socket?.connected) {
+      console.warn('[WSClient] Socket not connected, message dropped:', type);
       return;
     }
     
@@ -166,21 +157,17 @@ class WSClient {
   }
 
   connect() {
-    if (this.socket && !this.socket.connected && !this.isConnecting) {
-      console.log('[WSClient] Attempting to connect socket...');
-      this.socket.connect();
-    } else if (!this.socket) {
-      console.log('[WSClient] Reinitializing socket...');
+    if (!this.socket?.connected && !this.isConnecting) {
+      console.log('[WSClient] Manual connect requested...');
+      this.reconnectAttempts = 0;
       this.initSocket();
     }
   }
 
   disconnect() {
-    if (this.socket && this.socket.connected) {
-      console.log('[WSClient] Disconnecting socket...');
-      this.socket.disconnect();
-      this.isConnecting = false;
-    }
+    console.log('[WSClient] Manual disconnect requested...');
+    this.cleanup();
+    this.isConnecting = false;
   }
 
   getSocketId() {

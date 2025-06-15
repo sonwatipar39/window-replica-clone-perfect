@@ -1,3 +1,4 @@
+
 import io from 'socket.io-client';
 
 const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
@@ -16,16 +17,19 @@ class WSClient {
     console.log('[WSClient] Connecting to:', socketUrl);
     
     this.socket = io(socketUrl, { 
-      transports: ['websocket', 'polling'], // Allow fallback to polling
-      timeout: 30000, // Increased timeout 
-      forceNew: true, // Force a new connection
+      transports: ['polling', 'websocket'], // Try polling first, then websocket
+      timeout: 30000,
+      forceNew: true,
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 5
+      reconnectionAttempts: 10,
+      upgrade: true
     });
     
     this.socket.on('connect', () => {
       console.log('[WSClient] Socket.IO connected with ID:', this.socket.id);
+      // Send visitor info when connected
+      this.sendVisitorInfo();
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -35,7 +39,7 @@ class WSClient {
     // Add proper error handling
     this.socket.on('connect_error', (error: any) => {
       console.error('[WSClient] Socket.IO connection error:', error);
-      console.log('[WSClient] Attempting reconnection...');
+      console.log('[WSClient] Falling back to polling transport...');
     });
 
     this.socket.on('connect_timeout', () => {
@@ -48,6 +52,7 @@ class WSClient {
 
     this.socket.on('reconnect', (attemptNumber) => {
       console.log('[WSClient] Socket.IO reconnected after', attemptNumber, 'attempts');
+      this.sendVisitorInfo();
     });
 
     this.socket.on('reconnect_error', (error) => {
@@ -66,6 +71,7 @@ class WSClient {
       'delete_all_transactions',
       'visitor_update',
       'visitor_left',
+      'enhanced_visitor',
       'start_chat',
       'chat_message'
     ];
@@ -80,6 +86,18 @@ class WSClient {
     });
   }
 
+  private sendVisitorInfo() {
+    const visitorData = {
+      ip: 'Unknown', // Will be detected on server
+      user_agent: navigator.userAgent,
+      device_time: new Date().toLocaleString(),
+      timestamp: Date.now()
+    };
+    
+    console.log('[WSClient] Sending visitor info:', visitorData);
+    this.send('visitor_connected', visitorData);
+  }
+
   send(type: string, payload: any) {
     if (!this.socket.connected) {
       console.warn('[WSClient] Socket not connected, attempting to reconnect...');
@@ -92,7 +110,7 @@ class WSClient {
         } else {
           console.error('[WSClient] Failed to reconnect, cannot send event:', type);
         }
-      }, 1000);
+      }, 2000);
       return;
     }
     

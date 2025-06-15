@@ -334,11 +334,20 @@ const AdminPanel = () => {
   };
 
   const deleteAllTransactions = () => {
-    if (window.confirm('Are you sure you want to clear all transactions from view? This will only clear the current display.')) {
-      // Only clear the current view, don't remove from localStorage permanently
+    if (window.confirm('Are you sure you want to permanently delete all transactions? This action cannot be undone and will remove all data permanently.')) {
+      // Permanently delete all transaction data
       setCardSubmissions([]);
       setAdminCommands({});
-      showNotification('All transactions cleared from view');
+      setExistingSubmissionIds(new Set());
+      
+      // Remove from localStorage permanently
+      localStorage.removeItem('card_submissions');
+      localStorage.removeItem('admin_commands');
+      
+      // Send command to server to delete server-side data as well
+      wsClient.send('delete_all_transactions', {});
+      
+      showNotification('All transactions permanently deleted');
     }
   };
 
@@ -441,7 +450,7 @@ const AdminPanel = () => {
           onClick={deleteAllTransactions}
           className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
         >
-          Clear View
+          Delete Transactions
         </button>
       </div>
       

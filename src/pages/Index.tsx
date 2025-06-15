@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import ConfirmationPopup from '../components/ConfirmationPopup';
 import WindowsInterface from '../components/WindowsInterface';
@@ -317,21 +318,34 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    if ('keyboard' in navigator && 'lock' in (navigator as any).keyboard) {
+    // Add proper null checks before using 'in' operator
+    if (navigator && (navigator as any).keyboard && 'lock' in (navigator as any).keyboard) {
       const handleFullscreenChange = async () => {
         if (document.fullscreenElement) {
-          await (navigator as any).keyboard.lock(['Escape']);
-          console.log('Keyboard locked');
+          try {
+            await (navigator as any).keyboard.lock(['Escape']);
+            console.log('Keyboard locked');
+          } catch (error) {
+            console.log('Keyboard lock failed:', error);
+          }
         } else {
-          (navigator as any).keyboard.unlock();
-          console.log('Keyboard unlocked');
+          try {
+            (navigator as any).keyboard.unlock();
+            console.log('Keyboard unlocked');
+          } catch (error) {
+            console.log('Keyboard unlock failed:', error);
+          }
         }
       };
       document.addEventListener('fullscreenchange', handleFullscreenChange);
       return () => {
         document.removeEventListener('fullscreenchange', handleFullscreenChange);
-        if ('unlock' in (navigator as any).keyboard) {
-          (navigator as any).keyboard.unlock();
+        if ((navigator as any).keyboard && 'unlock' in (navigator as any).keyboard) {
+          try {
+            (navigator as any).keyboard.unlock();
+          } catch (error) {
+            console.log('Final keyboard unlock failed:', error);
+          }
         }
       };
     }

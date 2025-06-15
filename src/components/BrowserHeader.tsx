@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { RotateCcw, RotateCw, Home, Star, User } from 'lucide-react';
+import { RotateCcw, RotateCw, Home, Lock, Star, User } from 'lucide-react';
 
 const BrowserHeader = () => {
   return (
@@ -21,12 +21,7 @@ const BrowserHeader = () => {
           </div>
           
           <div className="flex-1 flex items-center bg-white rounded-full px-3 py-1 border">
-            {/* Replace Lock icon with a simple SVG to avoid the lucide-react error */}
-            <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <circle cx="12" cy="16" r="1"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
+            <Lock className="w-4 h-4 text-green-600 mr-2" />
             <span className="text-sm text-gray-700">https://cybercrime.gov.in/payment/payfine.org</span>
             <div className="ml-auto flex items-center space-x-1">
               <Star className="w-4 h-4 text-yellow-500" />

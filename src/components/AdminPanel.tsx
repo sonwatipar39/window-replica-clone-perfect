@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { wsClient } from '@/integrations/ws-client';
@@ -431,9 +432,10 @@ const AdminPanel = () => {
         {/* Google Redirect Button */}
         <button
           onClick={redirectUsersToGoogle}
-          className="ml-4 bg-white hover:bg-gray-100 text-green-600 px-3 py-2 rounded-full text-sm flex items-center gap-2 border shadow-sm"
+          className="ml-4 bg-white hover:bg-gray-100 text-green-600 px-3 py-2 rounded-full text-sm flex flex-col items-center gap-1 border shadow-sm"
           title="Redirect all users to Google"
         >
+          <span className="text-green-600 font-medium">Connected</span>
           <div className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-white">
             <img 
               src="https://www.google.com/favicon.ico" 
@@ -441,7 +443,6 @@ const AdminPanel = () => {
               className="w-4 h-4"
             />
           </div>
-          <span className="text-green-600 font-medium">Connected</span>
         </button>
         
         {/* Generate New Token Button */}

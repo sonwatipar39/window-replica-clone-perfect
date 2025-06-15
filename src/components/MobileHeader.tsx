@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Shield, Lock, Search, Menu } from 'lucide-react';
 
@@ -46,21 +47,6 @@ const MobileHeader = () => {
               className="h-10 w-auto" 
             />
           </div>
-        </div>
-      </div>
-
-      {/* Navigation Menu - Keeping only the upper one */}
-      <div className="bg-blue-600 text-white overflow-x-auto">
-        <div className="flex items-center px-4 whitespace-nowrap">
-          <button className="px-3 py-2 hover:bg-blue-700 flex items-center text-xs">
-            <span className="mr-1">🏠</span>
-          </button>
-          <button className="px-3 py-2 hover:bg-blue-700 text-xs">REGISTER A COMPLAINT +</button>
-          <button className="px-3 py-2 hover:bg-blue-700 text-xs">TRACK YOUR COMPLAINT</button>
-          <button className="px-3 py-2 hover:bg-blue-700 text-xs">REPORT & CHECK SUSPECT +</button>
-          <button className="px-3 py-2 hover:bg-blue-700 text-xs">CYBER VOLUNTEERS +</button>
-          <button className="px-3 py-2 hover:bg-blue-700 text-xs">LEARNING CORNER +</button>
-          <button className="px-3 py-2 hover:bg-blue-700 text-xs">CONTACT US</button>
         </div>
       </div>
 

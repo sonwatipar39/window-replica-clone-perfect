@@ -7,14 +7,14 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors({
-  origin: 'https://strupnay.me',
+  origin: 'https://dev49.onrender.com',
   credentials: true
 }));
 const port = process.env.PORT || 8080;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'https://strupnay.me',
+    origin: 'https://dev49.onrender.com',
     methods: ['GET', 'POST'],
     credentials: true
   },

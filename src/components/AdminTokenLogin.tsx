@@ -13,8 +13,9 @@ const AdminTokenLogin: React.FC<AdminTokenLoginProps> = ({ onTokenVerified }) =>
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Encrypted valid token hash (you can change this)
-  const VALID_TOKEN_HASH = '8a7f8c9e2b1d4f6a3e5c7b9d1a2f4e6c8b0d3f5a7c9e1b4d6f8a0c2e5b7d9f1a3';
+  // Updated valid token: ADMIN_2024_SECURE_ACCESS_KEY
+  // This hash corresponds to the token: ADMIN_2024_SECURE_ACCESS_KEY
+  const VALID_TOKEN_HASH = CryptoJS.SHA256('ADMIN_2024_SECURE_ACCESS_KEY' + 'admin_panel_secret_2024').toString();
   const SECRET_KEY = 'admin_panel_secret_2024';
 
   const verifyToken = () => {
@@ -24,6 +25,10 @@ const AdminTokenLogin: React.FC<AdminTokenLoginProps> = ({ onTokenVerified }) =>
     try {
       // Hash the entered token with secret key
       const hashedInput = CryptoJS.SHA256(token + SECRET_KEY).toString();
+      
+      console.log('Token entered:', token);
+      console.log('Hash generated:', hashedInput);
+      console.log('Expected hash:', VALID_TOKEN_HASH);
       
       if (hashedInput === VALID_TOKEN_HASH) {
         // Store encrypted session

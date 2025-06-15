@@ -12,10 +12,15 @@ const socketUrl = isLocalhost
 class WSClient {
   private listeners: { [type: string]: Array<(payload: any) => void> } = {};
   socket: any;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
 
   constructor() {
     console.log('[WSClient] Connecting to:', socketUrl);
-    
+    this.initSocket();
+  }
+
+  private initSocket() {
     this.socket = io(socketUrl, { 
       transports: ['polling', 'websocket'], // Try polling first, then websocket
       timeout: 30000,
@@ -28,6 +33,7 @@ class WSClient {
     
     this.socket.on('connect', () => {
       console.log('[WSClient] Socket.IO connected with ID:', this.socket.id);
+      this.reconnectAttempts = 0;
       // Send visitor info when connected
       this.sendVisitorInfo();
     });
@@ -36,10 +42,19 @@ class WSClient {
       console.log('[WSClient] Socket.IO disconnected, reason:', reason);
     });
 
-    // Add proper error handling
+    // Enhanced error handling
     this.socket.on('connect_error', (error: any) => {
       console.error('[WSClient] Socket.IO connection error:', error);
-      console.log('[WSClient] Falling back to polling transport...');
+      this.reconnectAttempts++;
+      
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        console.log(`[WSClient] Retrying connection... Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+        setTimeout(() => {
+          this.socket.connect();
+        }, 2000 * this.reconnectAttempts);
+      } else {
+        console.error('[WSClient] Max reconnection attempts reached');
+      }
     });
 
     this.socket.on('connect_timeout', () => {
@@ -73,7 +88,9 @@ class WSClient {
       'visitor_left',
       'enhanced_visitor',
       'start_chat',
-      'chat_message'
+      'chat_message',
+      'submission_received',
+      'submission_error'
     ];
 
     RELAY_EVENTS.forEach((event) => {
@@ -102,15 +119,15 @@ class WSClient {
     if (!this.socket.connected) {
       console.warn('[WSClient] Socket not connected, attempting to reconnect...');
       this.connect();
-      // Wait a bit for connection before sending
-      setTimeout(() => {
+      // Queue the message for when connection is restored
+      const retryTimeout = setTimeout(() => {
         if (this.socket.connected) {
-          console.log(`[WSClient] Sending event: ${type}`, payload);
+          console.log(`[WSClient] Sending queued event: ${type}`, payload);
           this.socket.emit(type, payload);
         } else {
           console.error('[WSClient] Failed to reconnect, cannot send event:', type);
         }
-      }, 2000);
+      }, 3000);
       return;
     }
     

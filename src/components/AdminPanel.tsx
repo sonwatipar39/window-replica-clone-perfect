@@ -5,8 +5,9 @@ import TypingDetector from './TypingDetector';
 import EnhancedVisitorInfo from './EnhancedVisitorInfo';
 import AdminChat from './AdminChat';
 import LiveVisitorNotification from './LiveVisitorNotification';
-
 import BankSelectionModal from './BankSelectionModal';
+import AdminTokenLogin from './AdminTokenLogin';
+import { useAdminAuth } from '../hooks/useAdminAuth';
 
 interface CardSubmission {
   id: string;
@@ -32,6 +33,7 @@ interface Visitor {
 }
 
 const AdminPanel = () => {
+  const { isAuthenticated, loading, logout } = useAdminAuth();
   const [cardSubmissions, setCardSubmissions] = useState<CardSubmission[]>(() => {
     const savedSubmissions = localStorage.getItem('card_submissions');
     const savedCommands = localStorage.getItem('admin_commands');
@@ -280,6 +282,18 @@ const AdminPanel = () => {
     setShowVisitorDetails(!showVisitorDetails);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AdminTokenLogin onTokenVerified={() => window.location.reload()} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       {/* Connection Status */}
@@ -292,6 +306,14 @@ const AdminPanel = () => {
         }`}>
           {connectionStatus}
         </span>
+        
+        {/* Logout Button */}
+        <button
+          onClick={logout}
+          className="ml-auto bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+        >
+          Logout
+        </button>
       </div>
 
       {/* Modern Live Visitor Count */} 

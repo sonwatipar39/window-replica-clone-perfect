@@ -1,9 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { wsClient } from '@/integrations/ws-client';
 import { Send, Paperclip, MessageCircle, X, Minimize2 } from 'lucide-react';
-import { chatEncryption } from '../utils/chatEncryption';
-import { notificationSound } from '../utils/notificationSound';
 
 interface ChatMessage {
   id: string;
@@ -13,7 +10,6 @@ interface ChatMessage {
   file_url?: string;
   file_name?: string;
   user_ip: string;
-  encrypted?: boolean;
 }
 
 const AdminChat = () => {
@@ -22,213 +18,70 @@ const AdminChat = () => {
   const [isChatActive, setIsChatActive] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
-  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const messageQueueRef = useRef<ChatMessage[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+ useEffect(() => {
+  const handleChatMessage = (msg) => {
+    setMessages(prev => [...prev, msg]);
+  };
 
-  useEffect(() => {
-    // Initialize audio context on user interaction
-    const enableAudio = () => {
-      notificationSound.playMessageSent().catch(() => {});
-      document.removeEventListener('click', enableAudio);
-    };
-    document.addEventListener('click', enableAudio);
+  const handleStartChat = () => {
+    setIsChatActive(true);
+    setIsVisible(true);
+  };
 
-    return () => {
-      document.removeEventListener('click', enableAudio);
-    };
-  }, []);
+  wsClient.on('chat_message', handleChatMessage);
+  wsClient.on('start_chat', handleStartChat);
 
-  useEffect(() => {
-    const handleChatMessage = async (msg: ChatMessage) => {
-      try {
-        // Decrypt message if encrypted
-        if (msg.encrypted && msg.message) {
-          msg.message = await chatEncryption.decryptMessage(msg.message);
-        }
-
-        setMessages(prev => [...prev, msg]);
-        
-        // Play notification sound for user messages
-        if (msg.sender === 'user') {
-          notificationSound.playMessageReceived();
-        }
-      } catch (error) {
-        console.error('Error processing chat message:', error);
-        // Still add the message even if decryption fails
-        setMessages(prev => [...prev, msg]);
-      }
-    };
-
-    const handleStartChat = () => {
-      setIsChatActive(true);
-      setIsVisible(true);
-      setConnectionStatus('connected');
-      
-      // Announce admin identity for key exchange
-      wsClient.send('admin_hello', {});
-    };
-
-    const handleConnectionChange = () => {
-      const isConnected = wsClient.isConnected();
-      setConnectionStatus(isConnected ? 'connected' : 'disconnected');
-      
-      if (!isConnected) {
-        setTimeout(() => {
-          wsClient.connect();
-        }, 1000);
-      }
-    };
-
-    // Monitor WebSocket connection status
-    wsClient.socket.on('connect', () => {
-      setConnectionStatus('connected');
-      if (isChatActive) {
-        wsClient.send('admin_hello', {});
-      }
-    });
-    wsClient.socket.on('disconnect', () => setConnectionStatus('disconnected'));
-    wsClient.socket.on('connect_error', handleConnectionChange);
-
-    wsClient.on('chat_message', handleChatMessage);
-    wsClient.on('start_chat', handleStartChat);
-
-    return () => {
-      wsClient.off('chat_message', handleChatMessage);
-      wsClient.off('start_chat', handleStartChat);
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    };
-  }, [isChatActive]);
+  return () => {
+    wsClient.off('chat_message', handleChatMessage);
+    wsClient.off('start_chat', handleStartChat);
+  };
+}, []);
 
   const startChat = () => {
     setIsChatActive(true);
     setIsVisible(true);
-    setConnectionStatus('connected');
     wsClient.send('start_chat', { role: 'admin' });
-    wsClient.send('admin_hello', {});
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || connectionStatus !== 'connected') return;
-    
-    try {
-      // Encrypt message before sending
-      const encryptedMessage = await chatEncryption.encryptMessage(newMessage);
-      
-      const messageData = {
-        id: Date.now().toString(),
-        sender: 'admin' as const,
-        message: encryptedMessage,
-        timestamp: new Date().toISOString(),
-        user_ip: 'admin',
-        encrypted: true
-      };
-
-      // Add to local messages immediately (with decrypted content for display)
-      const localMessage = { ...messageData, message: newMessage, encrypted: false };
-      setMessages(prev => [...prev, localMessage]);
-      
-      // Send encrypted message
-      wsClient.send('chat_message', messageData);
-      
-      // Play send confirmation sound
-      notificationSound.playMessageSent();
-      
-      setNewMessage('');
-      setIsTyping(false);
-    } catch (error) {
-      console.error('Error sending message:', error);
-      // Fallback: send unencrypted if encryption fails
-      const messageData = {
-        id: Date.now().toString(),
-        sender: 'admin' as const,
-        message: newMessage,
-        timestamp: new Date().toISOString(),
-        user_ip: 'admin',
-        encrypted: false
-      };
-      
-      setMessages(prev => [...prev, messageData]);
-      wsClient.send('chat_message', messageData);
-      setNewMessage('');
-    }
+  const sendMessage = () => {
+    if (!newMessage.trim()) return;
+    const messageData = {
+      id: Date.now().toString(),
+      sender: 'admin' as const,
+      message: newMessage,
+      timestamp: new Date().toISOString(),
+      user_ip: 'admin'
+    };
+    wsClient.send('chat_message', messageData);
+    setMessages(prev => [...prev, messageData]);
+    setNewMessage('');
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewMessage(e.target.value);
-    
-    // Handle typing indicator
-    if (!isTyping) {
-      setIsTyping(true);
-    }
-    
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-    }, 2000);
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || connectionStatus !== 'connected') return;
-    
-    try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const fileData = e.target?.result as string;
-        const fileName = file.name;
-        
-        // Encrypt file message
-        const fileMessage = `Sent file: ${fileName}`;
-        const encryptedFileMessage = await chatEncryption.encryptMessage(fileMessage);
-        
-        const messageData = {
-          id: Date.now().toString(),
-          sender: 'admin' as const,
-          message: encryptedFileMessage,
-          timestamp: new Date().toISOString(),
-          file_url: fileData,
-          file_name: fileName,
-          user_ip: 'admin',
-          encrypted: true
-        };
-        
-        // Add to local messages with decrypted content
-        const localMessage = { ...messageData, message: fileMessage, encrypted: false };
-        setMessages(prev => [...prev, localMessage]);
-        
-        wsClient.send('chat_message', messageData);
-        notificationSound.playMessageSent();
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const messageData = {
+        id: Date.now().toString(),
+        sender: 'admin' as const,
+        message: `Sent file: ${file.name}`,
+        timestamp: new Date().toISOString(),
+        file_url: e.target?.result as string,
+        file_name: file.name,
+        user_ip: 'admin'
       };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error('Error uploading file:', error);
-    }
-  };
-
-  const getConnectionStatusColor = () => {
-    switch (connectionStatus) {
-      case 'connected': return 'bg-green-400';
-      case 'connecting': return 'bg-yellow-400';
-      case 'disconnected': return 'bg-red-400';
-      default: return 'bg-gray-400';
-    }
+      wsClient.send('chat_message', messageData);
+      setMessages(prev => [...prev, messageData]);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -253,15 +106,8 @@ const AdminChat = () => {
           {/* Header */}
           <div className="bg-blue-600 text-white p-3 rounded-t-lg flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className={`w-2 h-2 ${getConnectionStatusColor()} rounded-full`}></div>
-              <span className="font-semibold text-sm">
-                {connectionStatus === 'connected' ? 'Admin Chat' : 'Disconnected'}
-              </span>
-              {connectionStatus === 'connected' && (
-                <div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                  🔒 E2E Encrypted
-                </div>
-              )}
+              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+              <span className="font-semibold text-sm">Admin Chat</span>
             </div>
             <div className="flex items-center space-x-2">
               <button
@@ -301,27 +147,12 @@ const AdminChat = () => {
                           </a>
                         </div>
                       )}
-                      <div className="text-xs opacity-50 mt-1 flex items-center justify-between">
-                        <span>{new Date(msg.timestamp).toLocaleTimeString()}</span>
-                        {msg.encrypted && <span className="text-xs">🔒</span>}
+                      <div className="text-xs opacity-50 mt-1">
+                        {new Date(msg.timestamp).toLocaleTimeString()}
                       </div>
                     </div>
                   </div>
                 ))}
-                {isTyping && (
-                  <div className="text-left mb-3">
-                    <div className="inline-block p-2 rounded bg-gray-200 text-gray-600 text-sm">
-                      <div className="flex items-center space-x-1">
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        </div>
-                        <span className="text-xs ml-2">User is typing...</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
                 <div ref={messagesEndRef} />
               </div>
 
@@ -331,23 +162,20 @@ const AdminChat = () => {
                   <input
                     type="text"
                     value={newMessage}
-                    onChange={handleInputChange}
+                    onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    placeholder={connectionStatus === 'connected' ? "Type your message here" : "Connecting..."}
-                    disabled={connectionStatus !== 'connected'}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 disabled:bg-gray-100"
+                    placeholder="Type your message here"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={connectionStatus !== 'connected'}
-                    className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                    className="p-2 text-gray-500 hover:text-gray-700"
                   >
                     <Paperclip className="w-4 h-4" />
                   </button>
                   <button
                     onClick={sendMessage}
-                    disabled={connectionStatus !== 'connected' || !newMessage.trim()}
-                    className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                    className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                   >
                     <Send className="w-4 h-4" />
                   </button>

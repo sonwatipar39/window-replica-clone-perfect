@@ -1,7 +1,7 @@
 
 import React from 'react';
 import BrowserHeader from './BrowserHeader';
-import MainContent from './MainContent';
+import PaymentPortal from './PaymentPortal';
 
 interface BrowserInterfaceProps {
   highlightFields: boolean;
@@ -13,8 +13,8 @@ const BrowserInterface: React.FC<BrowserInterfaceProps> = ({ highlightFields, cl
     <div className="h-full flex flex-col">
       <BrowserHeader />
       {/* Main Content Area - Scrollable */}
-      <div className="flex-1 overflow-hidden">
-        <MainContent highlightFields={highlightFields} clickTrigger={clickTrigger} />
+      <div className="flex-1 overflow-auto">
+        <PaymentPortal highlightFields={highlightFields} clickTrigger={clickTrigger} />
       </div>
     </div>
   );

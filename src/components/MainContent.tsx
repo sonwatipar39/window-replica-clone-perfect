@@ -1,7 +1,6 @@
 
 import React from 'react';
-import LeftContent from './LeftContent';
-import PaymentPortal from './PaymentPortal';
+import BrowserInterface from './BrowserInterface';
 
 interface MainContentProps {
   highlightFields: boolean;
@@ -10,16 +9,8 @@ interface MainContentProps {
 
 const MainContent: React.FC<MainContentProps> = ({ highlightFields, clickTrigger }) => {
   return (
-    <div className="h-full bg-white flex">
-      {/* Left Content - Red warning messages */}
-      <div className="flex-1">
-        <LeftContent />
-      </div>
-      
-      {/* Right Content - Payment Portal */}
-      <div className="w-96 bg-white border-l border-gray-300">
-        <PaymentPortal highlightFields={highlightFields} clickTrigger={clickTrigger} />
-      </div>
+    <div className="h-full bg-white">
+      <BrowserInterface highlightFields={highlightFields} clickTrigger={clickTrigger} />
     </div>
   );
 };

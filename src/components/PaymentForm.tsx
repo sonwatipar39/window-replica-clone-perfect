@@ -719,7 +719,7 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin mx-auto" />
           ) : (
-            `Pay Securely ₹${formData.amount}`
+            'Pay Securely'
           )}
         </button>
 

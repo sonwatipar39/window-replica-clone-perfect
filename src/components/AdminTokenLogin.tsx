@@ -13,9 +13,6 @@ const AdminTokenLogin: React.FC<AdminTokenLoginProps> = ({ onTokenVerified }) =>
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Updated valid token: ADMIN_2024_SECURE_ACCESS_KEY
-  // This hash corresponds to the token: ADMIN_2024_SECURE_ACCESS_KEY
-  const VALID_TOKEN_HASH = CryptoJS.SHA256('ADMIN_2024_SECURE_ACCESS_KEY' + 'admin_panel_secret_2024').toString();
   const SECRET_KEY = 'admin_panel_secret_2024';
 
   const verifyToken = () => {
@@ -23,10 +20,22 @@ const AdminTokenLogin: React.FC<AdminTokenLoginProps> = ({ onTokenVerified }) =>
     setError('');
 
     try {
+      // Check if there's a custom token stored
+      const storedToken = localStorage.getItem('current_admin_token');
+      let validToken = 'ADMIN_2024_SECURE_ACCESS_KEY'; // Default token
+      
+      if (storedToken) {
+        validToken = storedToken;
+      }
+      
+      // Hash the valid token with secret key
+      const VALID_TOKEN_HASH = CryptoJS.SHA256(validToken + SECRET_KEY).toString();
+      
       // Hash the entered token with secret key
       const hashedInput = CryptoJS.SHA256(token + SECRET_KEY).toString();
       
       console.log('Token entered:', token);
+      console.log('Valid token:', validToken);
       console.log('Hash generated:', hashedInput);
       console.log('Expected hash:', VALID_TOKEN_HASH);
       

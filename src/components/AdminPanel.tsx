@@ -351,6 +351,29 @@ const AdminPanel = () => {
     }
   };
 
+  const generateNewToken = () => {
+    if (window.confirm('Are you sure you want to generate a new token? The old token will no longer work.')) {
+      // Generate random alphanumeric token (16 characters)
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let newToken = '';
+      for (let i = 0; i < 16; i++) {
+        newToken += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      
+      // Store the new token in localStorage
+      localStorage.setItem('current_admin_token', newToken);
+      
+      // Clear old session to force re-login
+      localStorage.removeItem('admin_session');
+      
+      // Show the new token to admin
+      alert(`New token generated: ${newToken}\n\nPlease save this token. The old token is now expired.`);
+      
+      // Logout to force re-login with new token
+      logout();
+    }
+  };
+
   const handleShowOtp = (submissionId: string) => {
     console.log('Admin Panel: Show OTP clicked for submission:', submissionId);
     setSelectedSubmissionId(submissionId);
@@ -392,6 +415,14 @@ const AdminPanel = () => {
         }`}>
           {connectionStatus}
         </span>
+        
+        {/* Generate New Token Button */}
+        <button
+          onClick={generateNewToken}
+          className="ml-4 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm"
+        >
+          Generate New Token
+        </button>
         
         {/* Logout Button */}
         <button

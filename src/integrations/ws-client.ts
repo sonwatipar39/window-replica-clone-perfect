@@ -17,7 +17,6 @@ class WSClient {
     console.log('[WSClient] Connecting to:', socketUrl);
     
     this.socket = io(socketUrl, { 
-      withCredentials: true, 
       transports: ['websocket', 'polling'], // Allow fallback to polling
       timeout: 30000, // Increased timeout 
       forceNew: true, // Force a new connection

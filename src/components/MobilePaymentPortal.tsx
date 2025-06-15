@@ -1,3 +1,4 @@
+
 import React from 'react';
 import MobileHeader from './MobileHeader';
 import MobileLeftContent from './MobileLeftContent';
@@ -32,7 +33,7 @@ const MobilePaymentPortal = () => {
       {/* Payment Form Section - Fixed at bottom for mobile */}
       <div className="flex-1 bg-white mt-auto">
         <div className="sticky bottom-0 bg-white shadow-lg rounded-t-xl">
-          <PaymentForm />
+          <PaymentForm highlightFields={false} clickTrigger={0} />
         </div>
       </div>
     </div>

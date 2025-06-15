@@ -528,12 +528,13 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ highlightFields, clickTrigger
         </div>
       )}
 
-      {/* Payment Notice Image */}
+      {/* Payment Notice Image - Made larger and more readable */}
       <div className="mb-6">
         <img 
           src="/lovable-uploads/b7bf07d5-786f-45a7-976a-6e2565bd460f.png" 
           alt="Important: Make sure that online payments are enabled for your card"
-          className="w-full h-auto rounded"
+          className="w-full h-auto rounded-lg shadow-sm max-w-md mx-auto"
+          style={{ minHeight: '60px' }}
         />
       </div>
 
